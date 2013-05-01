@@ -2,7 +2,7 @@
 Outlook to Google Calendar Sync
 ===============================
 
-This is an application I wrote to demonstrate my abilities as a Java developer. It synchronizes appointments from a Microsoft Outlook calendar to a Google calendar. All appointments in the Outlook calendar that do not exist in the Google calendar are added, and any appointments in the Google calendar that do not exist in the Outlook calendar are deleted. It only works in one direction; the Outlook calendar is never modified. 
+This is an application I wrote to demonstrate my abilities as a Java developer. It synchronizes appointments from a Microsoft Outlook calendar to a Google calendar. All appointments in the Outlook calendar that do not exist in the Google calendar are added, and any appointments in the Google calendar that do not exist in the Outlook calendar are deleted. It only works in one direction; the Outlook calendar is never modified.
 
 If you are using the test Google account provided to you by myself, please be aware that others do have access to that account so calendar data may change unexpectedly. 
 
