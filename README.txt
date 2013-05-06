@@ -2,11 +2,7 @@
 Outlook to Google Calendar Sync
 ===============================
 
-<<<<<<< HEAD
 This application can be run from the runnable jar OutlookToGoogleCalendarSync.jar.
-=======
-This application can be run from the executable jar OutlookToGoogleCalendarSync.jar.
->>>>>>> 794c7569bf3732b178c4e6c6076b688372ad0f83
 
 This is an application I wrote to demonstrate my abilities as a Java developer. It synchronizes appointments from a Microsoft Outlook calendar to a Google calendar. All appointments in the Outlook calendar that do not exist in the Google calendar are added, and any appointments in the Google calendar that do not exist in the Outlook calendar are deleted. It only works in one direction; the Outlook calendar is never modified. Currently, it is only compatible with Outlook 2010, but will be updated to also work with Outlook 2003 (and possibly others) at some point. If the .pst file (the file used by Outlook to store email and calendar information) is located on a drive other than the "C:" drive, the application will not be able to find it. This will be corrected in a future build.
 
