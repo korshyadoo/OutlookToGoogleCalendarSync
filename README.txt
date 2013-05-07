@@ -6,6 +6,12 @@ This application can be run from the runnable jar OutlookToGoogleCalendarSync.ja
 
 This is an application I wrote to demonstrate my abilities as a Java developer. It synchronizes appointments from a Microsoft Outlook calendar to a Google calendar. All appointments in the Outlook calendar that do not exist in the Google calendar are added, and any appointments in the Google calendar that do not exist in the Outlook calendar are deleted. It only works in one direction; the Outlook calendar is never modified. Currently, it is only compatible with Outlook 2010, but will be updated to also work with Outlook 2003 (and possibly others) at some point. If the .pst file (the file used by Outlook to store email and calendar information) is located on a drive other than the "C:" drive, the application will not be able to find it. This will be corrected in a future build.
 
+The project uses Google Calendar API, the Jasypt library, and the java-libpst library, which can be found at the respective websites:
+
+https://developers.google.com/google-apps/calendar/
+http://www.jasypt.org
+https://github.com/rjohnsondev/java-libpst
+
 If you are using the test Google account provided to you by me, please be aware that others do have access to that account so calendar data may change unexpectedly. 
 
 When the sync button is pressed, the Google calendar is queried to retrieve an ArrayList containing all appointments with a start time six months prior to run time and 100 years ahead. Then, each appointment in the .pst file is compared to each appointment in the query ArrayList to look for matches. If an appointment from the .pst is found in the query ArrayList, it is removed from the ArrayList. If a .pst appointment is not in the query ArrayList, it is added to a second, insert queue, ArrayList. When all .pst files in the time frame have been checked, a batch request is sent to Google to delete all appointments remaining in the query ArrayList and insert all appointments in the insert queue ArrayList.
