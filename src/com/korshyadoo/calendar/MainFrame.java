@@ -29,6 +29,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
@@ -83,7 +84,7 @@ public class MainFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public MainFrame() {
-		setTitle("Outlook To Google Calendar Sync Build 0004");
+		setTitle("Outlook To Google Calendar Sync Build 0005");
 		setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 725, 362);
@@ -241,11 +242,11 @@ public class MainFrame extends JFrame {
 			startTimer = st;
 		}
 		
-		@Override
 		/**
 		 * Retrieves the CalendarEventEntry objects from the Google calendar that are within the selected time range,
-		 * sends a batch request to have the deleted, and reports the length of time the process took.
+		 * sends a batch request to have them deleted, and reports the length of time the process took.
 		 */
+		@Override
 		protected List<CalendarEventEntry> doInBackground() {
 			List<CalendarEventEntry> delete = null;
 			try {
@@ -272,17 +273,17 @@ public class MainFrame extends JFrame {
 				seconds = (int)totalTime - (minutes * 60);
 				lblActionTime.setText("Action time: " + minutes + " minutes, " + seconds + " seconds");
 			} catch (ServiceException e) {
-				e.printStackTrace();
+				JOptionPane.showMessageDialog(null,"Query request failed or system error retrieving feed: " + e.getLocation());
 			} catch (IOException e) {
-				e.printStackTrace();
-			} 
+				JOptionPane.showMessageDialog(null,"Error communicating with the GData service: " + e.getLocalizedMessage());
+			}
 			return delete;
 		}
 
-		@Override
 		/**
 		 * Writes a log entry recording all events deleted
 		 */
+		@Override
 		public void done() {
 			//Get the List of deleted CalendarEventEntrys
 			try {
@@ -792,7 +793,7 @@ public class MainFrame extends JFrame {
 				progressBar.setValue(0);			//Reset progress bar to 0%
 				ddrw = new DeleteDateRangeWorker(fromDate, toDate, startTimer);
 				ddrw.addPropertyChangeListener(new BTNDeleteDateRangePropertyChangeListener());
-				sworker.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
+				ddrw.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
 				ddrw.execute();
 			}
 		} else {									//From year is after to year

@@ -26,3 +26,10 @@ Build 0004
 - Removed progress bar for sync and delete date range (until it can be properly implemented)
 
 - Bug Fix: Progress bar was not reseting after first use
+
+Build 005
+- Fixed a javadoc typo in MainFrame.DeleteDateRangeWorker.doInBackground()
+- Multiple javadoc and comment updates
+-
+
+- Bug fix: Delete date range was throwing a null pointer exception

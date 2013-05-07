@@ -385,8 +385,10 @@ public class OutlookToGoogleCalendarSync {
 	 * @param startDate The beginning Date for the query
 	 * @param endDate The ending Date for the query
 	 * @return A List<CalendarEventEntry> containing all appointments with a start time between startDate and endDate
-	 * @throws ServiceException
-	 * @throws IOException
+	 * @throws ServiceException Query request failed or system error retrieving feed (thrown by CalendarService.query() and
+	 * CalendarService.getFeed())
+	 * @throws IOException Error communicating with the GData service (thrown by CalendarService.query() and
+	 * CalendarService.getFeed())
 	 */
 	public static List<CalendarEventEntry> timeQuery(Date startDate, Date endDate) throws ServiceException, IOException {
 		List<CalendarEventEntry> output = new ArrayList<>();
