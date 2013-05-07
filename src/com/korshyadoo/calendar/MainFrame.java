@@ -83,7 +83,7 @@ public class MainFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public MainFrame() {
-		setTitle("Outlook To Google Calendar Sync Build 0003");
+		setTitle("Outlook To Google Calendar Sync Build 0004");
 		setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 725, 362);
@@ -495,7 +495,7 @@ public class MainFrame extends JFrame {
 	}	
 
 	protected class DeleteAllEventsWorker extends SwingWorker<Boolean, Void> {
-		private Date startTimer;
+		private Date startTimer;			//Tracks how long the process takes
 		
 		public DeleteAllEventsWorker(Date d) {
 			startTimer = d;
@@ -731,7 +731,8 @@ public class MainFrame extends JFrame {
 		btnDeleteAllEvents.setEnabled(false);
 		btnChangeUser.setEnabled(false);
 		btnDeleteDateRange.setEnabled(false);
-		progressBar.setVisible(true);
+		//progressBar.setVisible(true);
+		progressBar.setValue(0);			//Reset progress bar to 0%
 		sworker = new SyncWorker(startTimer);
 		sworker.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
 		sworker.execute();
@@ -787,7 +788,8 @@ public class MainFrame extends JFrame {
 				btnDeleteAllEvents.setEnabled(false);
 				btnChangeUser.setEnabled(false);
 				btnDeleteDateRange.setEnabled(false);
-				progressBar.setVisible(true);
+				//progressBar.setVisible(true);
+				progressBar.setValue(0);			//Reset progress bar to 0%
 				ddrw = new DeleteDateRangeWorker(fromDate, toDate, startTimer);
 				ddrw.addPropertyChangeListener(new BTNDeleteDateRangePropertyChangeListener());
 				sworker.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
@@ -821,6 +823,7 @@ public class MainFrame extends JFrame {
 		btnDeleteDateRange.setEnabled(false);
 		lblActionTime.setText("");
 		progressBar.setVisible(true);
+		progressBar.setValue(0);			//Reset progress bar to 0%
 		daew = new DeleteAllEventsWorker(startTimer);
 		daew.addPropertyChangeListener(new BTNDeleteAllEventsPropertyChangeListener());
 		daew.execute();

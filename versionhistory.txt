@@ -18,3 +18,11 @@ Build 0003
 - Added warning messages for IOExceptions
 - Multiple comment updates
 - Changed date range for syncing to begin 5 months prior instead of 3 months prior to run time
+
+- Bug fix: action time was not being reported for delete all events
+
+Build 0004
+- Multiple comment updates
+- Removed progress bar for sync and delete date range (until it can be properly implemented)
+
+- Bug Fix: Progress bar was not reseting after first use
