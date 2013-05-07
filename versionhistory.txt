@@ -12,3 +12,9 @@ Build 0002
 
 - Bug fix: syncing after deleting all items ignored the time constraints
 - Bug fix: Changing users was not updating the label on mainFrame
+
+Build 0003
+- When setting the look and feel to Nimbus fails, it now sets the look and feel to null
+- Added warning messages for IOExceptions
+- Multiple comment updates
+- Changed date range for syncing to begin 5 months prior instead of 3 months prior to run time
