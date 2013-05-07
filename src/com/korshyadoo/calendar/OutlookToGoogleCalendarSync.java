@@ -19,15 +19,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -36,7 +30,9 @@ import java.util.List;
 import java.util.TimeZone;
 
 import javax.swing.JOptionPane;
+import javax.swing.LookAndFeel;
 import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 
 import org.jasypt.util.text.BasicTextEncryptor;
 
@@ -131,12 +127,11 @@ public class OutlookToGoogleCalendarSync {
 	 * @param args Must be length 2 and contain a valid username/password
 	 */
 	public static void main(String[] args) {
-		//JOptionPane.showMessageDialog(null,"test");
 		myService = new CalendarService("korshyadoo-MyOutlookSync-0.1");
 
-		//Get the start and end times used for syncing
+		//Set the start and end times used for syncing
 		Calendar startCal = new GregorianCalendar();
-		startCal.add(Calendar.MONTH, -3);                                   
+		startCal.add(Calendar.MONTH, -5);                                   
 		startDate = startCal.getTime();
 		Calendar endCal = new GregorianCalendar();
 		endCal.add(Calendar.YEAR, 100);                                   
@@ -146,7 +141,11 @@ public class OutlookToGoogleCalendarSync {
 		try {
 			UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
 		} catch (Throwable e) {
-			e.printStackTrace();
+			//LookAndFeel not found on user's system
+			try {
+				LookAndFeel laf = null;
+				UIManager.setLookAndFeel(laf);
+			} catch (UnsupportedLookAndFeelException e1) {}
 		}
 
 		//If this is the first time running, i.e. settings.ini is missing or empty,
@@ -180,8 +179,8 @@ public class OutlookToGoogleCalendarSync {
 				username = getSettingsField("username");
 				password = getSettingsField("password");
 				pstLocation = getSettingsField("pstLocation");
-				myService.setUserCredentials(username, password);
-				createURLObjects();
+				myService.setUserCredentials(username, password);			//Authenticate on Google server
+				createURLObjects();											//Form the URLs needed to use Google feeds
 
 				//Run MainFrame
 				java.awt.EventQueue.invokeLater(new Runnable() {
@@ -193,10 +192,9 @@ public class OutlookToGoogleCalendarSync {
 			}
 		} catch(MalformedURLException e) {
 			// Bad URL
-			System.err.println("Uh oh - you've got an invalid URL.");
+			JOptionPane.showMessageDialog(null,"Uh oh - you've got an invalid URL");
+			System.exit(0);
 		} catch(AuthenticationException e) {
-			System.out.println("Authentication error");
-
 			//Run FirstRunFrame
 			java.awt.EventQueue.invokeLater(new Runnable() {
 				@Override
@@ -205,7 +203,8 @@ public class OutlookToGoogleCalendarSync {
 				}
 			});          
 		} catch (IOException e) {
-			System.out.println("IOException checking settings.ini. File may be in use.");
+			JOptionPane.showMessageDialog(null,"IOException checking settings.ini. File may be missing or in use.");
+			System.exit(0);
 		}
 	}
 
@@ -532,9 +531,11 @@ public class OutlookToGoogleCalendarSync {
 	 * Determine if this is the first run but whether or not settings.ini exists or is empty. 
 	 * Creates settings.ini if it doesn't exist.
 	 * @return true if settings.ini doesn't exist or is empty. Otherwise, returns false.
-	 * @throws IOException 
+	 * @throws IOException Can be thrown by createNewFile() if the file doesn't exist; 
+	 * by read(); or by close().
+	 * @throws FileNotFoundException when constructing FileReader
 	 */
-	private static boolean firstRun() throws IOException {
+	private static boolean firstRun() throws IOException, FileNotFoundException {
 		File file = new File(SETTINGS_INI_LOCATION);
 		if(!file.exists()) {   
 			file.createNewFile();                                           //If settings.ini doesn't exist create it
@@ -553,7 +554,6 @@ public class OutlookToGoogleCalendarSync {
 				fr.close();
 				return false;
 			}
-
 		}
 	}
 
@@ -622,9 +622,11 @@ public class OutlookToGoogleCalendarSync {
 			encryptor.setPassword(ENCRYPTOR_PASS);
 			return encryptor.decrypt(encryptedSettings);
 		} catch (FileNotFoundException e) {
-			System.out.println("settings.ini is tested to exist before calling readSettings, so this should never be reached");
+			JOptionPane.showMessageDialog(null,"settings.ini is tested to exist before calling readSettings, so this should never be reached");
+			System.exit(0);
 		} catch (IOException e) {
-			System.out.println("There was a problem reading settings.ini. File may be in use");
+			JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be missing or in use");
+			System.exit(0);
 		}
 		return null;
 	}

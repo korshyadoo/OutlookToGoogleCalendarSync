@@ -225,22 +225,36 @@ public class MainFrame extends JFrame {
 		contentPane.add(separator);
 	}
 
+	/**
+	 * A SwingWorker that allows UI updates to occur while using the delete date range feature.
+	 *
+	 */
 	protected class DeleteDateRangeWorker extends SwingWorker<List<CalendarEventEntry>, Void> {
-		private Date from;
-		private Date to;
-		private Date startTimer;
+		private Date from;						//The beginning of the range to be deleted
+		private Date to;						//The end of the range to be deleted
+		private Date startTimer;				//Tracks how long the process takes
 
+		//Constructor
 		public DeleteDateRangeWorker(Date f, Date t, Date st) {
 			from = f;
 			to = t;
 			startTimer = st;
 		}
+		
 		@Override
+		/**
+		 * Retrieves the CalendarEventEntry objects from the Google calendar that are within the selected time range,
+		 * sends a batch request to have the deleted, and reports the length of time the process took.
+		 */
 		protected List<CalendarEventEntry> doInBackground() {
 			List<CalendarEventEntry> delete = null;
 			try {
+				//Retrieve the events within the selected date range and send batch request to delete them
 				delete = OutlookToGoogleCalendarSync.timeQuery(from, to);
 				OutlookToGoogleCalendarSync.deleteEvents(delete);
+				
+				//Update UI: 
+				//reset mouse cursor, turn off clock .gif, display success checkmark and label, enable all buttons, and hide progress bar
 				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 				lblClock.setVisible(false);
 				lblCheck.setVisible(true);
@@ -266,15 +280,16 @@ public class MainFrame extends JFrame {
 		}
 
 		@Override
+		/**
+		 * Writes a log entry recording all events deleted
+		 */
 		public void done() {
 			//Get the List of deleted CalendarEventEntrys
 			try {
 				deleteDateRangeEvents = get();
 			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} catch (ExecutionException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 
@@ -480,9 +495,11 @@ public class MainFrame extends JFrame {
 	}	
 
 	protected class DeleteAllEventsWorker extends SwingWorker<Boolean, Void> {
-		private Date from;
-		private Date to;
 		private Date startTimer;
+		
+		public DeleteAllEventsWorker(Date d) {
+			startTimer = d;
+		}
 
 		@Override
 		protected Boolean doInBackground() {
@@ -804,7 +821,7 @@ public class MainFrame extends JFrame {
 		btnDeleteDateRange.setEnabled(false);
 		lblActionTime.setText("");
 		progressBar.setVisible(true);
-		daew = new DeleteAllEventsWorker();
+		daew = new DeleteAllEventsWorker(startTimer);
 		daew.addPropertyChangeListener(new BTNDeleteAllEventsPropertyChangeListener());
 		daew.execute();
 	}

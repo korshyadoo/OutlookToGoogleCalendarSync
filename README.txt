@@ -33,7 +33,7 @@ calendar data may change unexpectedly.
 
 When the sync button is pressed, the Google calendar is queried 
 to retrieve an ArrayList containing all appointments with a 
-start time six months prior to run time and 100 years ahead. 
+start time five months prior to run time and 100 years ahead. 
 Then, each appointment in the .pst file is compared to each 
 appointment in the query ArrayList to look for matches. If an 
 appointment from the .pst is found in the query ArrayList, it is 
