@@ -40,4 +40,8 @@ Build 0006
 - If the user does not have permission to read the .pst file, a warning is displayed and execution halts
 
 - Bug fix: Running delete all events after a sync was not removing the label reporting the number of events before and after the sync
+<<<<<<< HEAD
 - Bug fix: If the there was no internet connection at the beginning of execution, the user would be prompted to enter their credentials as if authentication had failed.
+=======
+- Bug fix: If the there was no internet connection at the being of execution, the user would be prompted to enter their credentials as if authentication had failed.
+>>>>>>> 212936bcefebb6c47d104accbcd06480113f5286
