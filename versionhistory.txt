@@ -30,6 +30,14 @@ Build 0004
 Build 005
 - Fixed a javadoc typo in MainFrame.DeleteDateRangeWorker.doInBackground()
 - Multiple javadoc and comment updates
--
 
 - Bug fix: Delete date range was throwing a null pointer exception
+
+Build 0006
+- Improved exception catching in MainFrame.DeleteDateRangeWorker.doInBackground() and MainFrame.DeleteAllEvents.doInBackground()
+- Removed unnecessary method pstSearch() from PSTSearchFrame
+- Multiple updates to comments
+- If the user does not have permission to read the .pst file, a warning is displayed and execution halts
+
+- Bug fix: Running delete all events after a sync was not removing the label reporting the number of events before and after the sync
+- Bug fix: If the there was no internet connection at the being of execution, the user would be prompted to enter their credentials as if authentication had failed.

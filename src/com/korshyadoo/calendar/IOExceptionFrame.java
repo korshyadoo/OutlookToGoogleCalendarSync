@@ -33,22 +33,6 @@ public class IOExceptionFrame extends JFrame {
 	private MainFrame mainFrame;
 
 	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-//		EventQueue.invokeLater(new Runnable() {
-//			public void run() {
-//				try {
-//					IOExceptionFrame frame = new IOExceptionFrame(RETRY_SYNC, mainFrame);
-//					frame.setVisible(true);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		});
-	}
-
-	/**
 	 * Create the frame.
 	 */
 	public IOExceptionFrame(int mode, MainFrame m) {

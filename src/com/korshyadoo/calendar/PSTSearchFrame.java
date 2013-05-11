@@ -20,9 +20,6 @@ import java.awt.Rectangle;
 
 public class PSTSearchFrame extends JFrame {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
 	private JList<String> listPST;
@@ -31,7 +28,6 @@ public class PSTSearchFrame extends JFrame {
 	private JLabel lblMultiple;
 	private JLabel lblNoPST;
 	private JLabel lblSearchingForPST;
-
 
 	/**
 	 * Create the frame.
@@ -75,64 +71,10 @@ public class PSTSearchFrame extends JFrame {
 		btnOK.setBounds(145, 208, 89, 23);
 		contentPane.add(btnOK);
 		
-
+		//Execute the search for the .pst file in another thread
 		PSTSearchRunnable search = new PSTSearchRunnable(this);
 		Thread t = new Thread(search);
 		t.start();
-
-	}
-	
-	private void pstSearch() {
-		//Search for *.pst on c:\
-		Path startingDir = Paths.get("c:\\");
-		String pattern = "*.pst";
-		Finder finder = new Finder(pattern);
-		try {
-			Files.walkFileTree(startingDir, finder);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		List<Path> results = finder.getResults();
-		
-		//Check the results
-		if(results.size() == 1) {
-			//Only one pst file found
-			
-			//Set pstLocation field
-			OutlookToGoogleCalendarSync.pstLocation = results.get(0).toString();
-			
-			//Write pstLocation to settings.ini for future executions
-			OutlookToGoogleCalendarSync.setSettings("pstLocation", OutlookToGoogleCalendarSync.pstLocation);
-
-			//Run FirstRunFrame
-			java.awt.EventQueue.invokeLater(new Runnable() {
-				@Override
-				public void run() {
-					new FirstRunFrame().setVisible(true);
-				}
-			});
-			PSTSearchFrame.this.dispose();
-		} else if(results.size() > 1) {
-			//More than one .pst found. Have the user choose one
-			lblMultiple.setVisible(true);
-			scrollPane.setVisible(true);
-			listPST.setVisible(true);
-			btnOK.setVisible(true);
-			
-			//Add the results to listPST
-			DefaultListModel<String> listModel = new DefaultListModel<>();
-			for(int x = 0; x < results.size(); x++) {
-				listModel.addElement(results.get(x).toString());
-			}
-			listPST.setModel(listModel);
-		} else {
-			//No results found
-			System.out.println("no results found");
-			JLabel lblnoPST = new JLabel("<html><center>No .pst file was found.<br>Please ensure Microsoft Outlook is installed.");
-			lblnoPST.setBounds(136, 80, 153, 61);
-			contentPane.add(lblnoPST);
-		}
 	}
 	
 	/**

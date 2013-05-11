@@ -192,9 +192,14 @@ public class OutlookToGoogleCalendarSync {
 			}
 		} catch(MalformedURLException e) {
 			// Bad URL
+			// This shouldn't be reachable because the user is authenticated before forming the URLs
 			JOptionPane.showMessageDialog(null,"Uh oh - you've got an invalid URL");
 			System.exit(0);
 		} catch(AuthenticationException e) {
+			if(e.getCause().toString().equals("java.net.UnknownHostException: www.google.com")) {
+				JOptionPane.showMessageDialog(null,"Unable to reach host www.google.com. Please check your internet connection and try again");
+				System.exit(0);
+			}
 			//Run FirstRunFrame
 			java.awt.EventQueue.invokeLater(new Runnable() {
 				@Override
@@ -535,9 +540,10 @@ public class OutlookToGoogleCalendarSync {
 	 * @return true if settings.ini doesn't exist or is empty. Otherwise, returns false.
 	 * @throws IOException Can be thrown by createNewFile() if the file doesn't exist; 
 	 * by read(); or by close().
-	 * @throws FileNotFoundException when constructing FileReader
+	 * @throws FileNotFoundException when constructing FileReader, but the existance
+	 * of the file is tested for before constructing the FileReader
 	 */
-	private static boolean firstRun() throws IOException, FileNotFoundException {
+	private static boolean firstRun() throws IOException {
 		File file = new File(SETTINGS_INI_LOCATION);
 		if(!file.exists()) {   
 			file.createNewFile();                                           //If settings.ini doesn't exist create it
@@ -603,7 +609,15 @@ public class OutlookToGoogleCalendarSync {
 	 */
 	public static List<PSTFolder> getOutlookFolders() 
 			throws FileNotFoundException, PSTException, IOException {
-		PSTFile pstFile = new PSTFile(pstLocation);
+		//If the user has read permission for the .pst file, then create the PSTFile object
+		//If not, display warning and exit
+		PSTFile pstFile = null;
+		if(new File(pstLocation).canRead()) {
+			pstFile = new PSTFile(pstLocation);
+		} else {
+			JOptionPane.showMessageDialog(null,"The user does not have permission to read the Outlook calendar");
+			System.exit(0);
+		}
 
 		List<PSTFolder> rootSubs = pstFile.getRootFolder().getSubFolders();			//getSubFolers returns a java.util.Vector<PSTFolder>
 		return rootSubs.get(0).getSubFolders();      
@@ -696,7 +710,7 @@ public class OutlookToGoogleCalendarSync {
 
 	/**
 	 * Create the necessary URL objects.
-	 * @throws MalformedURLException 
+	 * @throws MalformedURLException The user is authenticated before creating the URL objects, therefore the URL should never be malformed
 	 */
 	public static void createURLObjects() throws MalformedURLException {
 		metafeedUrl = new URL(METAFEED_URL_BASE + username);

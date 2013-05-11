@@ -84,7 +84,7 @@ public class MainFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public MainFrame() {
-		setTitle("Outlook To Google Calendar Sync Build 0005");
+		setTitle("Outlook To Google Calendar Sync Build 0006");
 		setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 725, 362);
@@ -254,18 +254,10 @@ public class MainFrame extends JFrame {
 				delete = OutlookToGoogleCalendarSync.timeQuery(from, to);
 				OutlookToGoogleCalendarSync.deleteEvents(delete);
 				
-				//Update UI: 
-				//reset mouse cursor, turn off clock .gif, display success checkmark and label, enable all buttons, and hide progress bar
-				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-				lblClock.setVisible(false);
+				//Display success checkmark and label
 				lblCheck.setVisible(true);
 				lblSuccess.setVisible(true);
-				btnSync.setEnabled(true);
-				btnDeleteAllEvents.setEnabled(true);
-				btnChangeUser.setEnabled(true);
-				btnDeleteDateRange.setEnabled(true);
-				progressBar.setVisible(false);
-
+				
 				//Find the time it took to perform the action
 				Date endTimer = new Date();
 				int totalTime = (int)((endTimer.getTime() - startTimer.getTime()) / 1000);
@@ -273,9 +265,21 @@ public class MainFrame extends JFrame {
 				seconds = (int)totalTime - (minutes * 60);
 				lblActionTime.setText("Action time: " + minutes + " minutes, " + seconds + " seconds");
 			} catch (ServiceException e) {
-				JOptionPane.showMessageDialog(null,"Query request failed or system error retrieving feed: " + e.getLocation());
+				JOptionPane.showMessageDialog(null,"Query request failed or system error retrieving feed");
+				delete = null;
 			} catch (IOException e) {
-				JOptionPane.showMessageDialog(null,"Error communicating with the GData service: " + e.getLocalizedMessage());
+				JOptionPane.showMessageDialog(null,"Error communicating with the GData service. Check internet connection and try again.");
+				delete = null;
+			} finally {
+				//Update UI: 
+				//reset mouse cursor, turn off clock .gif, enable all buttons, and hide progress bar
+				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+				lblClock.setVisible(false);
+				btnSync.setEnabled(true);
+				btnDeleteAllEvents.setEnabled(true);
+				btnChangeUser.setEnabled(true);
+				btnDeleteDateRange.setEnabled(true);
+				progressBar.setVisible(false);
 			}
 			return delete;
 		}
@@ -326,9 +330,8 @@ public class MainFrame extends JFrame {
 							}
 						});
 						MainFrame.this.setVisible(false);
-						System.out.println("another test");
 					} catch(Throwable ev) {
-						System.out.println("Couldn't run IOExceptionFrame");
+						JOptionPane.showMessageDialog(null,"Failed to write log file. settings.ini may be in use");
 					}
 				}
 			}
@@ -481,15 +484,13 @@ public class MainFrame extends JFrame {
 							});
 							MainFrame.this.setVisible(false);
 						} catch(Throwable ev) {
-							System.out.println("Couldn't run IOExceptionFrame");
+							JOptionPane.showMessageDialog(null,"Failed to write log file. settings.ini may be in use");
 						}
 					}
 				}
 			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} catch (ExecutionException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}
@@ -546,16 +547,11 @@ public class MainFrame extends JFrame {
 					page++;
 				} while(resultFeed != null);
 				System.out.println("Deleted " + total + " events");
-				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-				lblClock.setVisible(false);
+
+				//Display success checkmark and label
 				lblCheck.setVisible(true);
 				lblSuccess.setVisible(true);
-				btnSync.setEnabled(true);
-				btnDeleteAllEvents.setEnabled(true);
-				btnChangeUser.setEnabled(true);
-				btnDeleteDateRange.setEnabled(true);
-				progressBar.setVisible(false);
-
+				
 				//Find the time it took to perform the action
 				Date endTimer = new Date();
 				int totalTime = (int)((endTimer.getTime() - startTimer.getTime()) / 1000);
@@ -563,14 +559,23 @@ public class MainFrame extends JFrame {
 				seconds = (int)totalTime - (minutes * 60);
 				lblActionTime.setText("Action time: " + minutes + " minutes, " + seconds + " seconds");
 			} catch (MalformedURLException e) {
-				System.out.println("MalformedURL exception deleting");
-				e.printStackTrace();
+				JOptionPane.showMessageDialog(null,"MalformedURL. Action failed.");
 			} catch (IOException e) {
 				System.out.println("IO exception deleting");
 				e.printStackTrace();
 			} catch (ServiceException e) {
 				System.out.println("Service exception deleting");
 				e.printStackTrace();
+			} finally {
+				//Update UI: 
+				//reset mouse cursor, turn off clock .gif, enable all buttons, and hide progress bar
+				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+				lblClock.setVisible(false);
+				btnSync.setEnabled(true);
+				btnDeleteAllEvents.setEnabled(true);
+				btnChangeUser.setEnabled(true);
+				btnDeleteDateRange.setEnabled(true);
+				progressBar.setVisible(false);
 			}
 			return true;
 		}
@@ -818,11 +823,12 @@ public class MainFrame extends JFrame {
 		lblCheck.setVisible(false);
 		lblSuccess.setVisible(false);
 		lblDeleteError.setVisible(false);
+		lblActionTime.setText("");
+		lblNumEvents.setText("");
 		btnSync.setEnabled(false);
 		btnDeleteAllEvents.setEnabled(false);
 		btnChangeUser.setEnabled(false);
 		btnDeleteDateRange.setEnabled(false);
-		lblActionTime.setText("");
 		progressBar.setVisible(true);
 		progressBar.setValue(0);			//Reset progress bar to 0%
 		daew = new DeleteAllEventsWorker(startTimer);
