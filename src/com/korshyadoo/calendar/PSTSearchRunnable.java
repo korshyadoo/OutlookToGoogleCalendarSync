@@ -9,6 +9,7 @@ import java.util.List;
 import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 
 public class PSTSearchRunnable implements Runnable {
 	private JFrame parent;
@@ -19,7 +20,6 @@ public class PSTSearchRunnable implements Runnable {
 	
 	@Override
 	public void run() {
-		System.out.println("test");
 		//Search for *.pst on c:\
 		Path startingDir = Paths.get("c:\\");
 		String pattern = "*.pst";
@@ -27,8 +27,8 @@ public class PSTSearchRunnable implements Runnable {
 		try {
 			Files.walkFileTree(startingDir, finder);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			JOptionPane.showMessageDialog(null,"IOException when searching for .pst file");
+			System.exit(0);
 		}
 		List<Path> results = finder.getResults();
 		

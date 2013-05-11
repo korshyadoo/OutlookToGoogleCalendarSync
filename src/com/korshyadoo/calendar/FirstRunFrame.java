@@ -1,11 +1,11 @@
 package com.korshyadoo.calendar;
 
 import java.awt.Dimension;
-import java.awt.EventQueue;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
@@ -14,6 +14,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
@@ -140,13 +141,15 @@ public class FirstRunFrame extends JFrame {
 			this.dispose();
 		} catch(MalformedURLException e) {
 			// Bad URL
-			System.err.println("Uh oh - you've got an invalid URL.");
+			JOptionPane.showMessageDialog(null,"Malformed URL");
+			System.exit(0);
+		} catch (FileNotFoundException e) {
+			JOptionPane.showMessageDialog(null,"settings.ini: File Not Found. Please relaunch the application.");
+			System.exit(0);
 		} catch (AuthenticationException e) {
 			lblAuthenticationFailed.setVisible(true);
 			txtInputEmailAddress.requestFocus();
 			txtInputEmailAddress.selectAll();
-		} catch(IOException e) {
-			System.out.println("IOException when writing encrypted un and pass to settings.ini");
 		}
 	}
 	

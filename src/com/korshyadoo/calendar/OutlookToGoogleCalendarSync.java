@@ -19,15 +19,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -36,7 +30,9 @@ import java.util.List;
 import java.util.TimeZone;
 
 import javax.swing.JOptionPane;
+import javax.swing.LookAndFeel;
 import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 
 import org.jasypt.util.text.BasicTextEncryptor;
 
@@ -131,12 +127,11 @@ public class OutlookToGoogleCalendarSync {
 	 * @param args Must be length 2 and contain a valid username/password
 	 */
 	public static void main(String[] args) {
-		//JOptionPane.showMessageDialog(null,"test");
 		myService = new CalendarService("korshyadoo-MyOutlookSync-0.1");
 
-		//Get the start and end times used for syncing
+		//Set the start and end times used for syncing
 		Calendar startCal = new GregorianCalendar();
-		startCal.add(Calendar.MONTH, -3);                                   
+		startCal.add(Calendar.MONTH, -5);                                   
 		startDate = startCal.getTime();
 		Calendar endCal = new GregorianCalendar();
 		endCal.add(Calendar.YEAR, 100);                                   
@@ -146,7 +141,11 @@ public class OutlookToGoogleCalendarSync {
 		try {
 			UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
 		} catch (Throwable e) {
-			e.printStackTrace();
+			//LookAndFeel not found on user's system
+			try {
+				LookAndFeel laf = null;
+				UIManager.setLookAndFeel(laf);
+			} catch (UnsupportedLookAndFeelException e1) {}
 		}
 
 		//If this is the first time running, i.e. settings.ini is missing or empty,
@@ -180,8 +179,8 @@ public class OutlookToGoogleCalendarSync {
 				username = getSettingsField("username");
 				password = getSettingsField("password");
 				pstLocation = getSettingsField("pstLocation");
-				myService.setUserCredentials(username, password);
-				createURLObjects();
+				myService.setUserCredentials(username, password);			//Authenticate on Google server
+				createURLObjects();											//Form the URLs needed to use Google feeds
 
 				//Run MainFrame
 				java.awt.EventQueue.invokeLater(new Runnable() {
@@ -193,10 +192,14 @@ public class OutlookToGoogleCalendarSync {
 			}
 		} catch(MalformedURLException e) {
 			// Bad URL
-			System.err.println("Uh oh - you've got an invalid URL.");
+			// This shouldn't be reachable because the user is authenticated before forming the URLs
+			JOptionPane.showMessageDialog(null,"Uh oh - you've got an invalid URL");
+			System.exit(0);
 		} catch(AuthenticationException e) {
-			System.out.println("Authentication error");
-
+			if(e.getCause().toString().equals("java.net.UnknownHostException: www.google.com")) {
+				JOptionPane.showMessageDialog(null,"Unable to reach host www.google.com. Please check your internet connection and try again");
+				System.exit(0);
+			}
 			//Run FirstRunFrame
 			java.awt.EventQueue.invokeLater(new Runnable() {
 				@Override
@@ -205,7 +208,8 @@ public class OutlookToGoogleCalendarSync {
 				}
 			});          
 		} catch (IOException e) {
-			System.out.println("IOException checking settings.ini. File may be in use.");
+			JOptionPane.showMessageDialog(null,"IOException checking settings.ini. File may be missing or in use.");
+			System.exit(0);
 		}
 	}
 
@@ -386,8 +390,10 @@ public class OutlookToGoogleCalendarSync {
 	 * @param startDate The beginning Date for the query
 	 * @param endDate The ending Date for the query
 	 * @return A List<CalendarEventEntry> containing all appointments with a start time between startDate and endDate
-	 * @throws ServiceException
-	 * @throws IOException
+	 * @throws ServiceException Query request failed or system error retrieving feed (thrown by CalendarService.query() and
+	 * CalendarService.getFeed())
+	 * @throws IOException Error communicating with the GData service (thrown by CalendarService.query() and
+	 * CalendarService.getFeed())
 	 */
 	public static List<CalendarEventEntry> timeQuery(Date startDate, Date endDate) throws ServiceException, IOException {
 		List<CalendarEventEntry> output = new ArrayList<>();
@@ -532,7 +538,10 @@ public class OutlookToGoogleCalendarSync {
 	 * Determine if this is the first run but whether or not settings.ini exists or is empty. 
 	 * Creates settings.ini if it doesn't exist.
 	 * @return true if settings.ini doesn't exist or is empty. Otherwise, returns false.
-	 * @throws IOException 
+	 * @throws IOException Can be thrown by createNewFile() if the file doesn't exist; 
+	 * by read(); or by close().
+	 * @throws FileNotFoundException when constructing FileReader, but the existance
+	 * of the file is tested for before constructing the FileReader
 	 */
 	private static boolean firstRun() throws IOException {
 		File file = new File(SETTINGS_INI_LOCATION);
@@ -553,7 +562,6 @@ public class OutlookToGoogleCalendarSync {
 				fr.close();
 				return false;
 			}
-
 		}
 	}
 
@@ -601,7 +609,15 @@ public class OutlookToGoogleCalendarSync {
 	 */
 	public static List<PSTFolder> getOutlookFolders() 
 			throws FileNotFoundException, PSTException, IOException {
-		PSTFile pstFile = new PSTFile(pstLocation);
+		//If the user has read permission for the .pst file, then create the PSTFile object
+		//If not, display warning and exit
+		PSTFile pstFile = null;
+		if(new File(pstLocation).canRead()) {
+			pstFile = new PSTFile(pstLocation);
+		} else {
+			JOptionPane.showMessageDialog(null,"The user does not have permission to read the Outlook calendar");
+			System.exit(0);
+		}
 
 		List<PSTFolder> rootSubs = pstFile.getRootFolder().getSubFolders();			//getSubFolers returns a java.util.Vector<PSTFolder>
 		return rootSubs.get(0).getSubFolders();      
@@ -622,9 +638,11 @@ public class OutlookToGoogleCalendarSync {
 			encryptor.setPassword(ENCRYPTOR_PASS);
 			return encryptor.decrypt(encryptedSettings);
 		} catch (FileNotFoundException e) {
-			System.out.println("settings.ini is tested to exist before calling readSettings, so this should never be reached");
+			JOptionPane.showMessageDialog(null,"settings.ini is tested to exist before calling readSettings, so this should never be reached");
+			System.exit(0);
 		} catch (IOException e) {
-			System.out.println("There was a problem reading settings.ini. File may be in use");
+			JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be missing or in use");
+			System.exit(0);
 		}
 		return null;
 	}
@@ -692,7 +710,7 @@ public class OutlookToGoogleCalendarSync {
 
 	/**
 	 * Create the necessary URL objects.
-	 * @throws MalformedURLException 
+	 * @throws MalformedURLException The user is authenticated before creating the URL objects, therefore the URL should never be malformed
 	 */
 	public static void createURLObjects() throws MalformedURLException {
 		metafeedUrl = new URL(METAFEED_URL_BASE + username);

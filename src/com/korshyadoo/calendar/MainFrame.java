@@ -29,6 +29,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
@@ -83,7 +84,7 @@ public class MainFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public MainFrame() {
-		setTitle("Outlook To Google Calendar Sync Build 0003");
+		setTitle("Outlook To Google Calendar Sync Build 0006");
 		setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 725, 362);
@@ -225,32 +226,38 @@ public class MainFrame extends JFrame {
 		contentPane.add(separator);
 	}
 
+	/**
+	 * A SwingWorker that allows UI updates to occur while using the delete date range feature.
+	 *
+	 */
 	protected class DeleteDateRangeWorker extends SwingWorker<List<CalendarEventEntry>, Void> {
-		private Date from;
-		private Date to;
-		private Date startTimer;
+		private Date from;						//The beginning of the range to be deleted
+		private Date to;						//The end of the range to be deleted
+		private Date startTimer;				//Tracks how long the process takes
 
+		//Constructor
 		public DeleteDateRangeWorker(Date f, Date t, Date st) {
 			from = f;
 			to = t;
 			startTimer = st;
 		}
+		
+		/**
+		 * Retrieves the CalendarEventEntry objects from the Google calendar that are within the selected time range,
+		 * sends a batch request to have them deleted, and reports the length of time the process took.
+		 */
 		@Override
 		protected List<CalendarEventEntry> doInBackground() {
 			List<CalendarEventEntry> delete = null;
 			try {
+				//Retrieve the events within the selected date range and send batch request to delete them
 				delete = OutlookToGoogleCalendarSync.timeQuery(from, to);
 				OutlookToGoogleCalendarSync.deleteEvents(delete);
-				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-				lblClock.setVisible(false);
+				
+				//Display success checkmark and label
 				lblCheck.setVisible(true);
 				lblSuccess.setVisible(true);
-				btnSync.setEnabled(true);
-				btnDeleteAllEvents.setEnabled(true);
-				btnChangeUser.setEnabled(true);
-				btnDeleteDateRange.setEnabled(true);
-				progressBar.setVisible(false);
-
+				
 				//Find the time it took to perform the action
 				Date endTimer = new Date();
 				int totalTime = (int)((endTimer.getTime() - startTimer.getTime()) / 1000);
@@ -258,23 +265,36 @@ public class MainFrame extends JFrame {
 				seconds = (int)totalTime - (minutes * 60);
 				lblActionTime.setText("Action time: " + minutes + " minutes, " + seconds + " seconds");
 			} catch (ServiceException e) {
-				e.printStackTrace();
+				JOptionPane.showMessageDialog(null,"Query request failed or system error retrieving feed");
+				delete = null;
 			} catch (IOException e) {
-				e.printStackTrace();
-			} 
+				JOptionPane.showMessageDialog(null,"Error communicating with the GData service. Check internet connection and try again.");
+				delete = null;
+			} finally {
+				//Update UI: 
+				//reset mouse cursor, turn off clock .gif, enable all buttons, and hide progress bar
+				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+				lblClock.setVisible(false);
+				btnSync.setEnabled(true);
+				btnDeleteAllEvents.setEnabled(true);
+				btnChangeUser.setEnabled(true);
+				btnDeleteDateRange.setEnabled(true);
+				progressBar.setVisible(false);
+			}
 			return delete;
 		}
 
+		/**
+		 * Writes a log entry recording all events deleted
+		 */
 		@Override
 		public void done() {
 			//Get the List of deleted CalendarEventEntrys
 			try {
 				deleteDateRangeEvents = get();
 			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} catch (ExecutionException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 
@@ -310,9 +330,8 @@ public class MainFrame extends JFrame {
 							}
 						});
 						MainFrame.this.setVisible(false);
-						System.out.println("another test");
 					} catch(Throwable ev) {
-						System.out.println("Couldn't run IOExceptionFrame");
+						JOptionPane.showMessageDialog(null,"Failed to write log file. settings.ini may be in use");
 					}
 				}
 			}
@@ -465,24 +484,24 @@ public class MainFrame extends JFrame {
 							});
 							MainFrame.this.setVisible(false);
 						} catch(Throwable ev) {
-							System.out.println("Couldn't run IOExceptionFrame");
+							JOptionPane.showMessageDialog(null,"Failed to write log file. settings.ini may be in use");
 						}
 					}
 				}
 			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} catch (ExecutionException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}
 	}	
 
 	protected class DeleteAllEventsWorker extends SwingWorker<Boolean, Void> {
-		private Date from;
-		private Date to;
-		private Date startTimer;
+		private Date startTimer;			//Tracks how long the process takes
+		
+		public DeleteAllEventsWorker(Date d) {
+			startTimer = d;
+		}
 
 		@Override
 		protected Boolean doInBackground() {
@@ -528,16 +547,11 @@ public class MainFrame extends JFrame {
 					page++;
 				} while(resultFeed != null);
 				System.out.println("Deleted " + total + " events");
-				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-				lblClock.setVisible(false);
+
+				//Display success checkmark and label
 				lblCheck.setVisible(true);
 				lblSuccess.setVisible(true);
-				btnSync.setEnabled(true);
-				btnDeleteAllEvents.setEnabled(true);
-				btnChangeUser.setEnabled(true);
-				btnDeleteDateRange.setEnabled(true);
-				progressBar.setVisible(false);
-
+				
 				//Find the time it took to perform the action
 				Date endTimer = new Date();
 				int totalTime = (int)((endTimer.getTime() - startTimer.getTime()) / 1000);
@@ -545,14 +559,23 @@ public class MainFrame extends JFrame {
 				seconds = (int)totalTime - (minutes * 60);
 				lblActionTime.setText("Action time: " + minutes + " minutes, " + seconds + " seconds");
 			} catch (MalformedURLException e) {
-				System.out.println("MalformedURL exception deleting");
-				e.printStackTrace();
+				JOptionPane.showMessageDialog(null,"MalformedURL. Action failed.");
 			} catch (IOException e) {
 				System.out.println("IO exception deleting");
 				e.printStackTrace();
 			} catch (ServiceException e) {
 				System.out.println("Service exception deleting");
 				e.printStackTrace();
+			} finally {
+				//Update UI: 
+				//reset mouse cursor, turn off clock .gif, enable all buttons, and hide progress bar
+				MainFrame.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+				lblClock.setVisible(false);
+				btnSync.setEnabled(true);
+				btnDeleteAllEvents.setEnabled(true);
+				btnChangeUser.setEnabled(true);
+				btnDeleteDateRange.setEnabled(true);
+				progressBar.setVisible(false);
 			}
 			return true;
 		}
@@ -714,7 +737,8 @@ public class MainFrame extends JFrame {
 		btnDeleteAllEvents.setEnabled(false);
 		btnChangeUser.setEnabled(false);
 		btnDeleteDateRange.setEnabled(false);
-		progressBar.setVisible(true);
+		//progressBar.setVisible(true);
+		progressBar.setValue(0);			//Reset progress bar to 0%
 		sworker = new SyncWorker(startTimer);
 		sworker.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
 		sworker.execute();
@@ -770,10 +794,11 @@ public class MainFrame extends JFrame {
 				btnDeleteAllEvents.setEnabled(false);
 				btnChangeUser.setEnabled(false);
 				btnDeleteDateRange.setEnabled(false);
-				progressBar.setVisible(true);
+				//progressBar.setVisible(true);
+				progressBar.setValue(0);			//Reset progress bar to 0%
 				ddrw = new DeleteDateRangeWorker(fromDate, toDate, startTimer);
 				ddrw.addPropertyChangeListener(new BTNDeleteDateRangePropertyChangeListener());
-				sworker.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
+				ddrw.addPropertyChangeListener(new BTNSyncPropertyChangesListener());
 				ddrw.execute();
 			}
 		} else {									//From year is after to year
@@ -798,13 +823,15 @@ public class MainFrame extends JFrame {
 		lblCheck.setVisible(false);
 		lblSuccess.setVisible(false);
 		lblDeleteError.setVisible(false);
+		lblActionTime.setText("");
+		lblNumEvents.setText("");
 		btnSync.setEnabled(false);
 		btnDeleteAllEvents.setEnabled(false);
 		btnChangeUser.setEnabled(false);
 		btnDeleteDateRange.setEnabled(false);
-		lblActionTime.setText("");
 		progressBar.setVisible(true);
-		daew = new DeleteAllEventsWorker();
+		progressBar.setValue(0);			//Reset progress bar to 0%
+		daew = new DeleteAllEventsWorker(startTimer);
 		daew.addPropertyChangeListener(new BTNDeleteAllEventsPropertyChangeListener());
 		daew.execute();
 	}
