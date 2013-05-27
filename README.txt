@@ -2,7 +2,7 @@
 Outlook to Google Calendar Sync
 ===============================
 
-This application can be run from the runnable jar OutlookToGoogleCalendarSync.jar.
+This application can be run from the runnable jar OutlookToGoogleCalendarSync0007.jar.
 
 This is an application I wrote to demonstrate my abilities as a 
 Java developer. It synchronizes appointments from a Microsoft 
