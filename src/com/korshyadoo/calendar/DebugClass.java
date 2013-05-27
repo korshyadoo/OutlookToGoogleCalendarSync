@@ -1,27 +1,6 @@
 package com.korshyadoo.calendar;
 
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
-
-import com.google.gdata.client.Query;
-import com.google.gdata.client.calendar.CalendarQuery;
-import com.google.gdata.client.calendar.CalendarService;
-import com.google.gdata.data.DateTime;
-import com.google.gdata.data.PlainTextConstruct;
-import com.google.gdata.data.calendar.CalendarEntry;
-import com.google.gdata.data.calendar.CalendarEventEntry;
-import com.google.gdata.data.calendar.CalendarEventFeed;
-import com.google.gdata.data.calendar.CalendarFeed;
-import com.google.gdata.data.calendar.WebContent;
-import com.google.gdata.data.extensions.Recurrence;
-import com.google.gdata.data.extensions.When;
-import com.google.gdata.util.ServiceException;
-import com.pff.PSTAppointment;
 
 class debugClass {
 //	/**

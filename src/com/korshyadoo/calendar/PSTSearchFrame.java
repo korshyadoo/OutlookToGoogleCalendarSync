@@ -13,10 +13,10 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
-import java.awt.Rectangle;
 
 public class PSTSearchFrame extends JFrame {
 
@@ -40,9 +40,9 @@ public class PSTSearchFrame extends JFrame {
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 		
-		lblSearchingForPST = new JLabel("Searching for .pst file...");
+		lblSearchingForPST = new JLabel("Searching for Outlook.pst file...");
 		int x = 124;
-		lblSearchingForPST.setBounds((int)(this.getBounds().getWidth() / 2) - (x / 2), 32, x, 14);
+		lblSearchingForPST.setBounds(114, 32, 182, 14);
 		contentPane.add(lblSearchingForPST);
 		
 		lblNoPST = new JLabel("<html><center>No .pst file was found.<br>Please ensure Microsoft Outlook is installed.");
@@ -71,6 +71,8 @@ public class PSTSearchFrame extends JFrame {
 		btnOK.setBounds(145, 208, 89, 23);
 		contentPane.add(btnOK);
 		
+		setVisible(true);
+		
 		//Execute the search for the .pst file in another thread
 		PSTSearchRunnable search = new PSTSearchRunnable(this);
 		Thread t = new Thread(search);
@@ -84,28 +86,81 @@ public class PSTSearchFrame extends JFrame {
 	private class BTNOKActionListener implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent arg0) {
-			//Set pstLocation field
-			OutlookToGoogleCalendarSync.pstLocation = listPST.getSelectedValue();
-			
-			//Write pstLocation to settings.ini for future executions
-			OutlookToGoogleCalendarSync.setSettings("pstLocation", OutlookToGoogleCalendarSync.pstLocation);
+			//Write pstLocation to settings.ini
+			try {
+				new SettingsIO().setSettingsField(SettingsIO.PST_LOCATION, listPST.getSelectedValue());
+			} catch (IOException e) {
+				// TODO Use IOException frame to prevent exiting
+				JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be in use.");
+				System.exit(0);
+			}
 
-			//Run FirstRunFrame
-			java.awt.EventQueue.invokeLater(new Runnable() {
-				@Override
-				public void run() {
-					new FirstRunFrame().setVisible(true);
-				}
-			});
+			//Run LogInFrame and dispose of this frame
+			java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
 			PSTSearchFrame.this.dispose();
 		}
 	}
 	
-	//Getters
-	public JLabel getLBLMultiple() { return lblMultiple; }
-	public JLabel getLBLSearchingForPST() { return lblSearchingForPST; }
-	public JLabel getLBLNoPST() { return lblNoPST; }
-	public JButton getBTNOK() { return btnOK; }
-	public JScrollPane getScrollPane() { return scrollPane; }
-	public JList<String> getListPST() { return listPST; }
+	private class PSTSearchRunnable implements Runnable {
+		private PSTSearchFrame pstSearchFrame;
+
+		public PSTSearchRunnable(PSTSearchFrame pstSearchFrame) {
+			this.pstSearchFrame = pstSearchFrame;
+		}
+
+		@Override
+		public void run() {
+			//Search for *.pst on c:\
+			Path startingDir = Paths.get("c:\\");
+			String pattern = "*.pst";
+			Finder finder = new Finder(pattern);
+			try {
+				Files.walkFileTree(startingDir, finder);
+			} catch (IOException e1) {
+				JOptionPane.showMessageDialog(null,"IOException when searching for .pst file");
+				System.exit(0);
+			}
+			List<Path> results = finder.getResults();
+
+			//Check the results
+			if(results.size() == 1) {
+				//Only one pst file found
+
+				//Write pstLocation to settings.ini
+				try {
+					new SettingsIO().setSettingsField(SettingsIO.PST_LOCATION, results.get(0).toString());
+				} catch (IOException e) {
+					// TODO Use IOException frame to prevent exiting
+					JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be in use.");
+					System.exit(0);
+				}
+
+				//DEBUG
+				System.out.println(results.get(0).toString());
+
+				//Run LogInFrame and dispose of this frame
+				java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
+				pstSearchFrame.dispose();
+			} else if(results.size() > 1) {
+				//More than one .pst found. Have the user choose one
+				
+				//Make visible the list box, label, and ok button
+				scrollPane.setVisible(true);
+				listPST.setVisible(true);
+				lblMultiple.setVisible(true);
+				btnOK.setVisible(true);
+
+				//Add the results to listPST
+				DefaultListModel<String> listModel = new DefaultListModel<>();
+				for(int x = 0; x < results.size(); x++) {
+					listModel.addElement(results.get(x).toString());
+				}
+				listPST.setModel(listModel);
+			} else {
+				//No results found
+				lblNoPST.setVisible(true);
+				lblSearchingForPST.setVisible(false);
+			}		
+		}
+	}
 }

@@ -14,14 +14,9 @@
 
 package com.korshyadoo.calendar;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -29,31 +24,17 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
 
-import javax.swing.JOptionPane;
-import javax.swing.LookAndFeel;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-
-import org.jasypt.util.text.BasicTextEncryptor;
-
 import com.google.gdata.client.calendar.CalendarQuery;
 import com.google.gdata.client.calendar.CalendarService;
 import com.google.gdata.data.DateTime;
 import com.google.gdata.data.Link;
-import com.google.gdata.data.PlainTextConstruct;
 import com.google.gdata.data.batch.BatchOperationType;
 import com.google.gdata.data.batch.BatchStatus;
 import com.google.gdata.data.batch.BatchUtils;
 import com.google.gdata.data.calendar.CalendarEventEntry;
 import com.google.gdata.data.calendar.CalendarEventFeed;
-import com.google.gdata.data.extensions.When;
-import com.google.gdata.data.extensions.Where;
 import com.google.gdata.util.AuthenticationException;
 import com.google.gdata.util.ServiceException;
-import com.pff.PSTAppointment;
-import com.pff.PSTException;
-import com.pff.PSTFile;
-import com.pff.PSTFolder;
 
 /**
  * Contains methods for interfacing with Google API, including authenitcation,
@@ -63,7 +44,6 @@ import com.pff.PSTFolder;
  *
  */
 public class OutlookToGoogleCalendarSync {
-
 	// The base URL for a user's calendar metafeed (needs a username appended).
 	private static final String METAFEED_URL_BASE = 
 			"https://www.google.com/calendar/feeds/";
@@ -74,145 +54,31 @@ public class OutlookToGoogleCalendarSync {
 
 	// The URL for the metafeed of the specified user.
 	// (e.g. http://www.google.com/feeds/calendar/jdoe@gmail.com)
-	private static URL metafeedUrl = null;
+	private URL metafeedUrl = null;
 
 	// The URL for the event feed of the specified user's primary calendar.
 	// (e.g. http://www.googe.com/feeds/calendar/jdoe@gmail.com/private/full)
-	private static URL eventFeedUrl = null;
+	private URL eventFeedUrl = null;
 
-	//The default location for the .pst file in Windows XP
-	public static final String PST_LOCATION_DEFAULT_XP = "C:\\Documents and Settings\\" + 
-			System.getProperty("user.name") +
-			"\\Local Settings\\Application Data\\Microsoft\\Outlook\\Outlook.pst";
-
-	//The default location for the .pst file in Windows Vista / 7
-	public static final String PST_LOCATION_DEFAULT_VISTA = "C:\\Users\\" +
-			System.getProperty("user.name") +
-			"\\AppData\\Local\\Microsoft\\Outlook\\Outlook.pst";
-
-	//An alternate location for the .pst file in Windows Vista / 7
-	public static final String PST_LOCATION_DEFAULT_VISTA2 = "C:\\Users\\" +
-			System.getProperty("user.name") +
-			"\\Documents\\Outlook Files\\Outlook.pst";
-
-
-	//Location of settings.ini
-	//public static final String SETTINGS_INI_LOCATION = "C:\\bakup\\Java\\Net Beans\\MyCalendarSample\\src\\settings.ini";
-	public static final String SETTINGS_INI_LOCATION = "settings.ini";
-
-	//Location of log.txt
-	public static final String LOG_TXT = "log.txt";
-
-	//Separator for log file
-	public static final String SEPARATOR = "-------------------------------------------";
-
-	//The password for the encryptor
-	public static final String ENCRYPTOR_PASS = "pass";
-
-	private static String username;
-	private static String password;
-	private static CalendarService myService;
-	private static StringBuilder settings = new StringBuilder();
-	private static Date startDate;
-	private static Date endDate;
-	private static List<Path> pstResults;
-	protected static String pstLocation;			//Location of the PST file used by Outlook
-
-	/**
-	 * Outlook calendar file is at C:\Users\Lappy2\Documents\Outlook Files\Outlook.pst
-	 * 
-	 * settings.ini:
-	 * First line contains a long representing the Date of the last time the OutlookPSTTest was run
-	 * 
-	 * @param args Must be length 2 and contain a valid username/password
-	 */
-	public static void main(String[] args) {
+	private Date startDate;						//The start date for the sync range
+	private Date endDate;						//The end date for the sync range
+	private CalendarService myService;
+	private String username;					//Username for logging into Google
+	private String password;					//Password for logging into Google
+	
+	public OutlookToGoogleCalendarSync() {
 		myService = new CalendarService("korshyadoo-MyOutlookSync-0.1");
-
+		
 		//Set the start and end times used for syncing
 		Calendar startCal = new GregorianCalendar();
 		startCal.add(Calendar.MONTH, -5);                                   
 		startDate = startCal.getTime();
 		Calendar endCal = new GregorianCalendar();
 		endCal.add(Calendar.YEAR, 100);                                   
-		endDate = endCal.getTime();      
-
-		//Set look and feel
-		try {
-			UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-		} catch (Throwable e) {
-			//LookAndFeel not found on user's system
-			try {
-				LookAndFeel laf = null;
-				UIManager.setLookAndFeel(laf);
-			} catch (UnsupportedLookAndFeelException e1) {}
-		}
-
-		//If this is the first time running, i.e. settings.ini is missing or empty,
-		//locate the .pst file and run FirstRunFrame, otherwise run MainFrame. 
-		//If authentication exception is thrown running MainFrame, run FirstRunFrame
-		try {
-			if(firstRun()) {			//First time running the application or missing settings.ini
-				//Locate the .pst file
-				pstLocation = locatePST();
-				if(pstLocation != null) {
-					//A .pst file was found
-					//Write pstLocation to settings.ini for future executions
-					setSettings("pstLocation", pstLocation);
-
-					//Run FirstRunFrame
-					java.awt.EventQueue.invokeLater(new Runnable() {
-						@Override
-						public void run() {
-							new FirstRunFrame().setVisible(true);
-						}
-					});
-				} else {
-					//No .pst file was found in the default locations
-					//Run PSTSearchFrame
-					java.awt.EventQueue.invokeLater(new PSTSearchFrameRunnable());
-				}
-			} else {		//Not the first run
-				//Read credentials from settings.ini, set username and password static fields,
-				// set the credentials for myService, and create URL Objects
-				settings = new StringBuilder(readSettings());
-				username = getSettingsField("username");
-				password = getSettingsField("password");
-				pstLocation = getSettingsField("pstLocation");
-				myService.setUserCredentials(username, password);			//Authenticate on Google server
-				createURLObjects();											//Form the URLs needed to use Google feeds
-
-				//Run MainFrame
-				java.awt.EventQueue.invokeLater(new Runnable() {
-					@Override
-					public void run() {
-						new MainFrame().setVisible(true);
-					}
-				});            
-			}
-		} catch(MalformedURLException e) {
-			// Bad URL
-			// This shouldn't be reachable because the user is authenticated before forming the URLs
-			JOptionPane.showMessageDialog(null,"Uh oh - you've got an invalid URL");
-			System.exit(0);
-		} catch(AuthenticationException e) {
-			if(e.getCause().toString().equals("java.net.UnknownHostException: www.google.com")) {
-				JOptionPane.showMessageDialog(null,"Unable to reach host www.google.com. Please check your internet connection and try again");
-				System.exit(0);
-			}
-			//Run FirstRunFrame
-			java.awt.EventQueue.invokeLater(new Runnable() {
-				@Override
-				public void run() {
-					new FirstRunFrame().setVisible(true);
-				}
-			});          
-		} catch (IOException e) {
-			JOptionPane.showMessageDialog(null,"IOException checking settings.ini. File may be missing or in use.");
-			System.exit(0);
-		}
+		endDate = endCal.getTime(); 
 	}
-
+	
+	
 	/**
 	 * Retrieves all events from the Google calendar and adds them to an ArrayList<CalendarEventEntry>
 	 * @param service
@@ -220,7 +86,7 @@ public class OutlookToGoogleCalendarSync {
 	 * @throws ServiceException
 	 * @throws IOException 
 	 */
-	public static ArrayList<CalendarEventEntry> getAllEvents(CalendarService service)
+	public ArrayList<CalendarEventEntry> getAllEvents(CalendarService service)
 			throws ServiceException, IOException {
 		// Send the request and receive the response:
 		CalendarEventFeed resultFeed = service.getFeed(eventFeedUrl,
@@ -245,92 +111,6 @@ public class OutlookToGoogleCalendarSync {
 	}   
 
 	/**
-	 * Converts a PSTAppointmnet to a CalendarEventEntry.
-	 * Converts the start time, end time, title, and locataion
-	 * Needs recurrence added
-	 * @param app The PSTAppointment object to be converted to a CalendarEventEntry
-	 * @return 
-	 */
-	public static ConvertReturn convertPSTToCEE(PSTAppointment app) {
-		//Check for weird daylight saving bias and load the start and end times into the When object 
-		DateTime startTime =  null;
-		DateTime endTime = null;
-		boolean nullTZ = false;
-		if(app.getStartTimeZone() != null) {
-			if(!TimeZone.getDefault().inDaylightTime(app.getCreationTime()) &&
-					TimeZone.getDefault().inDaylightTime(app.getStartTime()) &&
-					app.getStartTimeZone().getDaylightBias() == 0) {			//If app was created outside DST and start time is during DST and the daylight bias is 0
-				//remove 60 minutes from start time
-				Calendar startChange = new GregorianCalendar();
-				startChange.setTime(app.getStartTime());
-				startChange.add(Calendar.MINUTE, -60);
-				startTime = new DateTime(startChange.getTime(), TimeZone.getDefault());
-
-				//Remove 60 minutes from the end time
-				Calendar endChange = new GregorianCalendar();
-				endChange.setTime(app.getEndTime());
-				endChange.add(Calendar.MINUTE, -60);
-				endTime = new DateTime(endChange.getTime(), TimeZone.getDefault());
-			} else if(TimeZone.getDefault().inDaylightTime(app.getCreationTime()) &&
-					!TimeZone.getDefault().inDaylightTime(app.getStartTime()) &&
-					app.getStartTimeZone().getDaylightBias() == -60) {
-				//Add 60 minutes to start time
-				Calendar startChange = new GregorianCalendar();
-				startChange.setTime(app.getStartTime());
-				startChange.add(Calendar.MINUTE, 60);
-				startTime = new DateTime(startChange.getTime(), TimeZone.getDefault());
-
-				//Add 60 minutes to end time
-				Calendar endChange = new GregorianCalendar();
-				endChange.setTime(app.getEndTime());
-				endChange.add(Calendar.MINUTE, 60);
-				endTime = new DateTime(endChange.getTime(), TimeZone.getDefault());
-			} else {														
-				//No need to adjust for daylight savings
-				startTime = new DateTime(app.getStartTime(), TimeZone.getDefault());
-				endTime = new DateTime(app.getEndTime(), TimeZone.getDefault());
-			}
-		} else {
-			//The time zone on the PSTAppointment is null so just use the default time zone
-			startTime = new DateTime(app.getStartTime(), TimeZone.getDefault());
-			endTime = new DateTime(app.getEndTime(), TimeZone.getDefault());
-
-			//Set nullTZ to true for the return value (indicates to MainFrame that a log entry needs to be written)
-			nullTZ = true;		
-		}
-
-		Date startDate = new Date(app.getStartTime().getTime());
-		Calendar startCal = new GregorianCalendar();
-		startCal.setTime(startDate);
-		Date endDate = new Date(app.getEndTime().getTime());
-		Calendar endCal = new GregorianCalendar();
-		endCal.setTime(endDate);
-		if(!nullTZ) {
-			startTime.setTzShift(app.getStartTimeZone().getBias() - (startCal.get(Calendar.DST_OFFSET) / (60 * 1000)));
-			endTime.setTzShift(app.getEndTimeZone().getBias() - (endCal.get(Calendar.DST_OFFSET) / (60 * 1000)));
-		} else {
-			startTime.setTzShift(startCal.get(Calendar.DST_OFFSET) / (60 * 1000));
-			endTime.setTzShift(endCal.get(Calendar.DST_OFFSET) / (60 * 1000));
-		}
-		When when = new When();
-		when.setStartTime(startTime);
-		when.setEndTime(endTime);
-
-		//Create Where object and set the location
-		Where location = new Where();
-		location.setValueString(app.getLocation());
-
-		//Create new CalendarEventEntry and set the times, title, location, and content
-		CalendarEventEntry entry = new CalendarEventEntry();
-		entry.addTime(when);
-		entry.setTitle(new PlainTextConstruct(app.getSubject()));
-		entry.addLocation(location);
-		entry.setContent(new PlainTextConstruct(app.getBody()));
-
-		return new ConvertReturn(entry, nullTZ);
-	}
-
-	/**
 	 * Makes a batch request to delete all the events in the given list. If any of
 	 * the operations fails, the errors returned from the server are displayed.
 	 * The CalendarEntry objects in the list given as a parameters must be entries
@@ -344,7 +124,7 @@ public class OutlookToGoogleCalendarSync {
 	 * @throws ServiceException If the service is unable to handle the request.
 	 * @throws IOException Error communicating with the server.
 	 */
-	public static void deleteEvents(List<CalendarEventEntry> eventsToDelete) throws ServiceException,
+	public void deleteEvents(List<CalendarEventEntry> eventsToDelete) throws ServiceException,
 	IOException {
 
 		// Add each item in eventsToDelete to the batch request.
@@ -395,7 +175,7 @@ public class OutlookToGoogleCalendarSync {
 	 * @throws IOException Error communicating with the GData service (thrown by CalendarService.query() and
 	 * CalendarService.getFeed())
 	 */
-	public static List<CalendarEventEntry> timeQuery(Date startDate, Date endDate) throws ServiceException, IOException {
+	public List<CalendarEventEntry> timeQuery(Date startDate, Date endDate) throws ServiceException, IOException {
 		List<CalendarEventEntry> output = new ArrayList<>();
 		
 		//Set up the resultfeed
@@ -439,12 +219,12 @@ public class OutlookToGoogleCalendarSync {
 	}
 
 	/**
-	 * Find all events in gmail calendar starting 6 months prior to run time and ending 100 years past run time.
+	 * Find all events in gmail calendar in the range determined by the startDate and endDate fields.
 	 * @return ArrayList containing all event results. size == 0 if no events found.
-	 * @throws ServiceException
-	 * @throws IOException 
+	 * @throws ServiceException query request failed
+	 * @throws IOException error communicating with the GData service
 	 */
-	public static ArrayList<CalendarEventEntry> timeRangeQuery()
+	public ArrayList<CalendarEventEntry> timeRangeQuery()
 			throws ServiceException, IOException {
 		DateTime startDateTime = new DateTime(startDate, TimeZone.getDefault());
 		DateTime endDateTime = new DateTime(endDate, TimeZone.getDefault());
@@ -481,6 +261,55 @@ public class OutlookToGoogleCalendarSync {
 
 		return results;
 	}
+	
+	/**
+	 * Find all events in gmail calendar in the range determined by the startDate and endDate fields.
+	 * Overloaded to accept a SwingWorker reference to update the progress of the task.
+	 * @return ArrayList containing all event results. size == 0 if no events found.
+	 * @throws ServiceException query request failed
+	 * @throws IOException error communicating with the GData service
+	 */
+	public ArrayList<CalendarEventEntry> timeRangeQuery(MainFrame.SyncWorker sw)
+			throws ServiceException, IOException {
+		DateTime startDateTime = new DateTime(startDate, TimeZone.getDefault());
+		DateTime endDateTime = new DateTime(endDate, TimeZone.getDefault());
+
+		//Prepare the CalendarQuery
+		CalendarQuery myQuery = new CalendarQuery(eventFeedUrl);
+		myQuery.setMinimumStartTime(startDateTime);
+		myQuery.setMaximumStartTime(endDateTime);
+
+		/*            
+            //Debugging output
+            System.out.println("start = " + startDateTime.toUiString());
+            System.out.println("MinimumStartTime = " + myQuery.getMinimumStartTime());
+            System.out.println("end = " + endDateTime.toUiString());
+            System.out.println("MaximumStartTime = " + myQuery.getMaximumStartTime());  
+		 */
+
+		CalendarEventFeed resultFeed = myService.query(myQuery, CalendarEventFeed.class);
+		ArrayList<CalendarEventEntry> results = new ArrayList<>();
+		double progress = 0;
+		double totalResults = resultFeed.getTotalResults();
+		int page = 1;
+		do {
+			System.out.println("Query page " + page);
+			for (int i = 0; i < resultFeed.getEntries().size(); i++) {			//For each entry in the result feed
+				CalendarEventEntry entry = resultFeed.getEntries().get(i);
+				results.add(entry);
+				progress += ((1 / totalResults) * 80);							//Each result increases the progress bar to a max of 80%
+				sw.publicSetProgress((int)progress);
+			}            
+			if(resultFeed.getNextLink() != null) {                              //If there's another page of results in the feed, get it
+				resultFeed = myService.getFeed(new URL(resultFeed.getNextLink().getHref()), CalendarEventFeed.class);
+			} else {
+				resultFeed = null;
+			}
+			page++;
+		} while(resultFeed != null);
+
+		return results;
+	}
 
 	/**
 	 * Makes a batch request to insert all the events in the given list. If any of
@@ -496,8 +325,8 @@ public class OutlookToGoogleCalendarSync {
 	 * @throws ServiceException If the service is unable to handle the request.
 	 * @throws IOException Error communicating with the server.
 	 */
-	public static void insertEvents(List<CalendarEventEntry> eventsToInsert) throws ServiceException,
-	IOException {
+	public void insertEvents(List<CalendarEventEntry> eventsToInsert) 
+			throws ServiceException, IOException {
 
 		// Add each item in eventsToDelete to the batch request.
 		CalendarEventFeed batchRequest = new CalendarEventFeed();
@@ -534,258 +363,73 @@ public class OutlookToGoogleCalendarSync {
 		}
 	}
 
-	/**
-	 * Determine if this is the first run but whether or not settings.ini exists or is empty. 
-	 * Creates settings.ini if it doesn't exist.
-	 * @return true if settings.ini doesn't exist or is empty. Otherwise, returns false.
-	 * @throws IOException Can be thrown by createNewFile() if the file doesn't exist; 
-	 * by read(); or by close().
-	 * @throws FileNotFoundException when constructing FileReader, but the existance
-	 * of the file is tested for before constructing the FileReader
-	 */
-	private static boolean firstRun() throws IOException {
-		File file = new File(SETTINGS_INI_LOCATION);
-		if(!file.exists()) {   
-			file.createNewFile();                                           //If settings.ini doesn't exist create it
-			System.out.println("settings created");
-			return true;                                                    //settings.ini didn't exist
-		} else {
-			FileReader fr = new FileReader(new File(OutlookToGoogleCalendarSync.SETTINGS_INI_LOCATION));
-			if(fr.read() == -1) {
-				//settings.ini empty
-				System.out.println("empty");
-				fr.close();
-				return true;
-			} else {
-				//settings.ini not empty
-				System.out.println("not empty");
-				fr.close();
-				return false;
-			}
-		}
+	public void setUserCredentials() throws AuthenticationException {
+		myService.setUserCredentials(username, password);
 	}
 
 	/**
-	 * Attempts to locate the .pst in the default locations
-	 * @return String containing the location of the .pst file. Returns null if no file was found.
+	 * Returns the CalendarService used to connect to Google
+	 * @return the myService field
 	 */
-	private static String locatePST() {
-		String location = null;
-		if(System.getProperty("os.version").equals("5.1")) {
-			//Windows XP
-			File file = new File(PST_LOCATION_DEFAULT_XP);
-			if(file.exists()) {
-				location = PST_LOCATION_DEFAULT_XP;
-			} else {
-				//Can't find .pst file. Try alternate location
-				file = new File(PST_LOCATION_DEFAULT_VISTA2);
-				if(file.exists()) {
-					location = PST_LOCATION_DEFAULT_VISTA2;
-				} 
-			}
-		} else {
-			//Not Windows XP
-			File file = new File(PST_LOCATION_DEFAULT_VISTA);
-			if(file.exists()) {
-				location = PST_LOCATION_DEFAULT_VISTA;
-			} else {
-				//Can't find .pst file. Try alternate location
-				file = new File(PST_LOCATION_DEFAULT_VISTA2);
-				if(file.exists()) {
-					location = PST_LOCATION_DEFAULT_VISTA2;
-				} 
-			}
-		}
-		return location;
-	}
-
-	/**
-	 * Locates the folder within the file structure of the .pst file that houses the Outlook folders
-	 * (e.g. inbox, outbox, trash, calendar, etc.)
-	 * @return A List<PSTFolder> containing references to each of the Outlook folders, including the calendar folder
-	 * @throws FileNotFoundException
-	 * @throws PSTException
-	 * @throws IOException
-	 */
-	public static List<PSTFolder> getOutlookFolders() 
-			throws FileNotFoundException, PSTException, IOException {
-		//If the user has read permission for the .pst file, then create the PSTFile object
-		//If not, display warning and exit
-		PSTFile pstFile = null;
-		if(new File(pstLocation).canRead()) {
-			pstFile = new PSTFile(pstLocation);
-		} else {
-			JOptionPane.showMessageDialog(null,"The user does not have permission to read the Outlook calendar");
-			System.exit(0);
-		}
-
-		List<PSTFolder> rootSubs = pstFile.getRootFolder().getSubFolders();			//getSubFolers returns a java.util.Vector<PSTFolder>
-		return rootSubs.get(0).getSubFolders();      
-	}
-	
-	/**
-	 * Read encrypted contents of settings.ini
-	 * @return A String containing all the decrypted contents of settings.ini
-	 * @throws FileNotFoundException
-	 * @throws IOException 
-	 */
-	static String readSettings() {
-		try(BufferedReader br = new BufferedReader(new FileReader(new File(OutlookToGoogleCalendarSync.SETTINGS_INI_LOCATION)))) {
-			char[] charBuffer = new char[5000];
-			int numChar = br.read(charBuffer, 0, 5000);              //The number of characters read from settings.ini (encrypted)
-			String encryptedSettings = new String(charBuffer, 0, numChar);   //Creates a string from the number of chars read
-			BasicTextEncryptor encryptor = new BasicTextEncryptor();
-			encryptor.setPassword(ENCRYPTOR_PASS);
-			return encryptor.decrypt(encryptedSettings);
-		} catch (FileNotFoundException e) {
-			JOptionPane.showMessageDialog(null,"settings.ini is tested to exist before calling readSettings, so this should never be reached");
-			System.exit(0);
-		} catch (IOException e) {
-			JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be missing or in use");
-			System.exit(0);
-		}
-		return null;
-	}
-
-	/**
-	 * Adds or updates an element in the settings field
-	 * @param elementName Name of the element to add or update (i.e. "username", "password", or "pstlocation")
-	 * @param elementContents The contents of the element being added or updated
-	 */
-	static void setSettings(String elementName, String elementContents) {
-		StringBuilder updatedSettings = new StringBuilder();
-		if(settings.length() > 0) {			//If settings is not empty
-			//Search for elementName in settings. If it exists, delete the element
-			int startIndex = settings.indexOf(new String(elementName + "="));
-			if(startIndex == 0) {				//If startIndex is zero, do a substring starting at the first instance of "\n" to the end of the string
-				//Element found at the beginning of settings. Set updatedSettings to the remaining elements
-				updatedSettings = new StringBuilder(settings.substring(settings.indexOf("\n") + 1));
-			} else if(startIndex > 0) {			//If startIndex is greater than zero, do a substring before and after
-				//Element found. Delete it
-				settings.delete(startIndex, settings.indexOf("\n", startIndex) + 1);
-			}
-		}
-		
-		//Either way, append the new element to settings. 
-		//updatedSettings will be empty unless the first element in settings is being updated
-		settings.append(updatedSettings.toString() + elementName + "=" + elementContents + "\n");
-	}
-	
-	//Setters
-	public static void setUsername(String un) {
-		username = un;
-	}
-	public static void setPassword(String pass) {
-		password = pass;
-	}
-	static void setPSTLocation(String l) {
-		pstLocation = l;
-	}
-
-	//Getters
-	public static String getUserrname() {
-		return username;
-	}
-	public static String getPassword() {
-		return password;
-	}
-	public static CalendarService getMyService() {
+	CalendarService getMyService() {
 		return myService;
 	}
-	public static StringBuilder getSettings() {
-		return settings;
-	}
-	public static URL getEventFeedURL() {
+	
+	/**
+	 * Returns the URL for the event feed of the specified user's primary calendar
+	 * @return the eventFeedUrl field
+	 */
+	URL getEventFeedURL() {
 		return eventFeedUrl;
 	}
-	public static Date getStartDate() {
-		return startDate;
+	
+	/**
+	 * Returns the date of the beginning of the range of time that will be synced to the Google calendar
+	 * @return a Date set to the start of the time range used for syncing
+	 */
+	public Date getStartDate() {
+		return new Date(startDate.getTime());
 	}
-	public static Date getEndDate() {
-		return endDate;
+	
+	/**
+	 * Returns the date of the end of the range of time that will be synced to the Google calendar
+	 * @return a Date set to the end of the time range used for syncing
+	 */
+	public Date getEndDate() {
+		return new Date(endDate.getTime());
 	}
-	static List<Path> getPSTResults() {
-		return pstResults;
+	
+	/**
+	 * Returns the Google username
+	 * @return a String containing the Google username
+	 */
+	public String getUsername() {
+		return username;
+	}
+		
+	/**
+	 * Sets the Google username
+	 * @param un a String containing the Google username
+	 */
+	public void setUsername(String un) {
+		username = un;
+	}
+	
+	/**
+	 * Sets the Google password
+	 * @param pw a String containing the Google password
+	 */
+	public void setPassword(String pw) {
+		password = pw;
 	}
 
 	/**
 	 * Create the necessary URL objects.
 	 * @throws MalformedURLException The user is authenticated before creating the URL objects, therefore the URL should never be malformed
 	 */
-	public static void createURLObjects() throws MalformedURLException {
+	public void createURLObjects() throws MalformedURLException {
 		metafeedUrl = new URL(METAFEED_URL_BASE + username);
 		eventFeedUrl = new URL(METAFEED_URL_BASE + username
 				+ EVENT_FEED_URL_SUFFIX);
-	}
-
-	/**
-	 * Retrieves a field entry from the decrypted settings.ini
-	 * @param settings String containing the decrypted contents of settings.ini
-	 * @param field The field to retrieve from the decrypted settings.ini
-	 * @return The field located in the decrypted settings.ini. Returns null if the field was not found.
-	 */
-	public static String getSettingsField(String field) {
-		String result = null;
-		int searchIndex = settings.toString().indexOf(field);
-		if(searchIndex != -1) {
-			searchIndex += (field.length() + 1);     						//Points searchIndex at the beginning of the field (e.g. username is stored in settings.ini as "username=xxxxx", where"xxxxx" is the username, so searchIndex begins after "=")
-			int searchEndIndex = settings.indexOf("\n", searchIndex);		//Point unEndIndex at the "\n" at the end of the field
-			result = settings.toString().substring(searchIndex, searchEndIndex);
-		} 
-		return result;
-	}
-
-	/**
-	 * Check if a CalendarEventEntry is meaningfully equivalent to a PSTAppointment.
-	 * PSTAppointment.getBody() adds a line feed, '\r' (ASCII 13), and a 
-	 * carriage return, '\n' (ASCII 10), to the end of the content, even when 
-	 * the content is empty. Also, any carriage return in the content is 
-	 * preceded by a line feed.
-	 * Remove all ASCII 13 from pst
-	 * @param cee CalendarEventEntry to be compared.
-	 * @param pst PSTAppointment to be compared.
-	 * @return true if they are meaningfully equivalent, otherwise false.
-	 */
-	public static boolean compareCEEToPST(CalendarEventEntry cee, PSTAppointment pst) {
-		//DEBUG
-		//        System.out.println("Compare:");
-		//        System.out.println("Title: " + pst.getSubject() + " vs " + cee.getTitle().getPlainText());
-		//        System.out.println("Start: " + pst.getStartTime().toString() + " vs " + new Date(cee.getTimes().get(0).getStartTime().getValue()).toString());
-		//        System.out.println("End: " + pst.getEndTime().toString() + " vs " + cee.getTimes().get(0).getEndTime().getValue());
-		//        System.out.println("Location: " + pst.getLocation() + " vs " + cee.getLocations().get(0).getValueString());
-		//        System.out.println("Content: " + pst.getBody().trim() + " vs " + cee.getPlainTextContent());
-		//        
-		//Create a String containing the content from pst with the excess line feeds and carriage return removed
-		char[] pstContentArray = pst.getBody().trim().toCharArray();
-		char[] correctedPSTContentArray = new char[pstContentArray.length];
-		int index = 0;
-		for(int n = 0; n < pstContentArray.length; n++) {
-			if(pstContentArray[n] != (char)13) {
-				correctedPSTContentArray[index] = pstContentArray[n];
-				index++;
-			}
-		}
-		String pstContentString = new String(correctedPSTContentArray).trim();
-
-		/*DEBUG        
-        char[] debugarray2 = cee.getPlainTextContent().toCharArray();
-        for(int n = 0; n < debugarray2.length; n++) {
-            System.out.println("Array char " + n + " = " + (int)debugarray2[n] + " " + debugarray2[n]);
-        }        
-		 */        
-		if(pstContentString.equals(cee.getPlainTextContent())) {                //If the content on the cee and pst match, compare the rest
-			CalendarEventEntry convertedPST = convertPSTToCEE(pst).getCEE();
-			//            System.out.println("Matched: PST " + pst.getSubject() + " / " + pst.getStartTime().toString());
-			//            System.out.println("with: converted " + convertedPST.getTitle().getPlainText() + " / " + 
-			//            				   new Date(convertedPST.getTimes().get(0).getStartTime().getValue()).toString());
-			//            System.out.println("with: CEE " + cee.getTitle().getPlainText() + " / " + 
-			// 				   new Date(cee.getTimes().get(0).getStartTime().getValue()).toString());
-			return cee.getTitle().getPlainText().equals(convertedPST.getTitle().getPlainText()) && 
-					cee.getTimes().get(0).getStartTime().getValue() == convertedPST.getTimes().get(0).getStartTime().getValue() &&
-					cee.getTimes().get(0).getEndTime().getValue() == convertedPST.getTimes().get(0).getEndTime().getValue() &&
-					cee.getLocations().get(0).getValueString().equals(convertedPST.getLocations().get(0).getValueString());
-		} else {
-			return false;
-		}
 	}
 }

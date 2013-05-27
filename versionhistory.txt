@@ -41,3 +41,20 @@ Build 0006
 
 - Bug fix: Running delete all events after a sync was not removing the label reporting the number of events before and after the sync
 - Bug fix: If there was no internet connection at the beginning of execution, the user would be prompted to enter their credentials as if authentication had failed.
+
+Build 0007
+- Redesigned OutlookToGoogleCalendarSync, changing many fields from static to non-static and moving some methods and fields to other classes
+- Created new class PSTInterface for handling retrieval of data from .pst file
+- Created new class SettingsIO for handling reading of settings.ini
+- Created new class LogWriter for handling log writing
+- Removed firstRun() and implemented its function into SettingsIO
+- Removed ConvertReturn class and changed the return type for PSTInterface.ConvertPSTToCEE() to CalendarEventEntry
+- Implemented progress bar for sync
+- Made PSTSearchFrameRunnable a private subclass of MainFrame
+- Replaced centreWindow() methods with JFrame.setLocationRelativeTo(null)
+- Renamed FirstRunFrame to LogInFrame
+- Added initComponents() method to IOExceptionFrame to handle initialization of frame components during object construction
+- Now, the MainFrame object is not created until after the .pst is located and Google is authenticated
+- Multiple javadoc and comment updates 
+- Added exception catching to MainFrame.SyncWorker.doInBackground()
+
