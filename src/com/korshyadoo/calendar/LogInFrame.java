@@ -3,6 +3,7 @@ package com.korshyadoo.calendar;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.MalformedURLException;
 
@@ -17,6 +18,11 @@ import javax.swing.border.EmptyBorder;
 
 import com.google.gdata.util.AuthenticationException;
 
+/**
+ * Frame used to enter Google credentials.
+ * @author korshyadoo
+ *
+ */
 @SuppressWarnings("serial")
 public class LogInFrame extends JFrame {
 	private JPanel contentPane;
@@ -37,7 +43,23 @@ public class LogInFrame extends JFrame {
 	}
 	
 	private void initComponents() {
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		//Add a listener to delete settings.ini if the login window is closed
+		addWindowListener(new java.awt.event.WindowAdapter(){
+			public void windowClosing(WindowEvent we) {
+				//Attempt to delete settings.ini before exiting to avoid an exception on next program launch
+				SettingsIO sio;
+				try {
+					sio = SettingsIO.getInstance();
+					sio.deleteSettingsINI();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+				System.exit(0);
+			}
+		});
+		
 		setBounds(100, 100, 472, 285);
 		setPreferredSize(new Dimension((int)getBounds().getWidth(), (int)getBounds().getHeight()));
 		contentPane = new JPanel();
@@ -76,6 +98,15 @@ public class LogInFrame extends JFrame {
 		JButton jbClose = new JButton("Close");
 		jbClose.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				//Attempt to delete settings.ini before exiting to avoid an exception on next program launch
+				SettingsIO sio;
+				try {
+					sio = SettingsIO.getInstance();
+					sio.deleteSettingsINI();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				
 				System.exit(1);
 			}
 		});
@@ -108,7 +139,7 @@ public class LogInFrame extends JFrame {
 			//Write username and password to settings.ini
 			SettingsIO logInFrameSettingsIO = null;
 			try {
-				logInFrameSettingsIO = new SettingsIO();
+				logInFrameSettingsIO = SettingsIO.getInstance();
 			} catch (IOException e) {
 				// TODO Use IOException frame to prevent exiting
 				JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be in use.");
@@ -150,27 +181,15 @@ public class LogInFrame extends JFrame {
 	
 	private class MainFrameRunnable implements Runnable {
 		private OutlookToGoogleCalendarSync o;
-		private PSTInterface p;
-		
+
 		public MainFrameRunnable(OutlookToGoogleCalendarSync o) {
 			this.o = o;
-			this.p = null;
 		}
 
 		@Override
 		public void run() {
-			if(p == null) {
-				try {
-					new MainFrame(o).setLocationRelativeTo(null);
-				} catch (IOException e) {
-					// TODO Use IOException frame to prevent exiting
-					JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be in use.");
-					System.exit(0);
-				}
-			} else {
-				new MainFrame(o, p).setLocationRelativeTo(null);
-			}
+			new MainFrame(o).setLocationRelativeTo(null);
 		}
 	}
-	
+
 }

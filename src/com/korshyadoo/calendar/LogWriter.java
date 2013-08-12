@@ -10,8 +10,8 @@ import java.util.List;
 import com.google.gdata.data.calendar.CalendarEventEntry;
 
 public class LogWriter {
-	private static final String LOG_LOCATION = "log.txt";													//Location of log.txt
-	private static final String SEPARATOR = "-------------------------------------------";					//Separator for log file
+	private static final String LOG_LOCATION = "log.txt";												//Location of log.txt
+	private static final String SEPARATOR = "-------------------------------------------";				//Separator for log file
 
 	public void writeDeleteDateRangeLog(List<CalendarEventEntry> deleteDateRangeEvents, int minutes, int seconds) throws IOException {
 		BufferedWriter log = new BufferedWriter(new FileWriter(new File(LOG_LOCATION), true));

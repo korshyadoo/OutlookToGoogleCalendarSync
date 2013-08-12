@@ -2,7 +2,7 @@
 Outlook to Google Calendar Sync
 ===============================
 
-This application can be run from the runnable jar OutlookToGoogleCalendarSync0007.jar.
+This application can be run from the runnable jar OutlookToGoogleCalendarSync0008.jar.
 
 This is an application I wrote to demonstrate my abilities as a 
 Java developer. It synchronizes appointments from a Microsoft 
@@ -12,10 +12,14 @@ added, and any appointments in the Google calendar that do not
 exist in the Outlook calendar are deleted. It only works in one 
 direction; the Outlook calendar is never modified. Currently, it 
 is only compatible with Outlook 2010, but will be updated to 
-also work with Outlook 2003 (and possibly others) at some point. 
-If the .pst file (the file used by Outlook to store email and 
-calendar information) is located on a drive other than the "C:" 
-drive, the application will not be able to find it. This will be 
+also work with Outlook 2003 (and possibly others) at some point.
+It does synchronize the calendar for Outlook 2003 but there are
+issues with daylight savings time where some appointments are
+offset by an hour. It is presumed to be the same for Outlook
+2007, but no testing has been done with that version. If the
+.pst file (the file used by Outlook to store email and calendar
+information) is located on a drive other than the "C:" drive,
+the application will not be able to find it. This will be
 corrected in a future build.
 
 The project uses Google Calendar API, the Jasypt library, and 
@@ -50,7 +54,7 @@ subsequent appointments in the series will.
 
 Depending on the number of events in the Google calendar, the 
 delete all events function can take upwards of 20 minutes to 
-complete.
+complete, though it typically takes less than 2 minutes.
 
 In its current form, there are potential security problems with 
 the way the password is handled. It is stored in encrypted form 

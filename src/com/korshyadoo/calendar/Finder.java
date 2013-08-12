@@ -20,10 +20,12 @@ import java.util.List;
 public class Finder extends SimpleFileVisitor<Path> {
 	private final PathMatcher matcher;
 	private List<Path> results = new ArrayList<>();
+	private PSTSearchFrame parent;									//A reference to the calling JFrame. Used to update lblSearchingFile showing the file that is currently being checked
 
-	Finder(String pattern) {
+	Finder(String pattern, PSTSearchFrame parent) {
 		matcher = FileSystems.getDefault()
 				.getPathMatcher("glob:" + pattern);
+		this.parent = parent;
 	}
 
 	// Compares the glob pattern against
@@ -53,6 +55,7 @@ public class Finder extends SimpleFileVisitor<Path> {
 	@Override
 	public FileVisitResult preVisitDirectory(Path dir,
 			BasicFileAttributes attrs) {
+		parent.setLBLSearchingFileText(dir.toString());
 		find(dir);
 		return CONTINUE;
 	}

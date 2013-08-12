@@ -23,35 +23,49 @@ public class SettingsIO {
 	public static final String USERNAME = "username";							//The settings.ini field for the username
 	public static final String PASSWORD = "password";							//The settings.ini field for the password
 
-	private static StringBuilder settings;												//Stores the contents of settings.ini
+	private StringBuilder settingsBuffer;										//Stores the contents of settings.ini
+	
+	private static SettingsIO sio;
 
 	//Constructor
 	/**
-	 * If settings.ini exists, it reads it into the settings field. 
+	 * If settings.ini exists and is not empty, it reads it into the settingsBuffer field. 
 	 * If not, it creates it. 
 	 * @throws IOException an I/O error occurred accessing settings.ini
 	 */
-	public SettingsIO() throws IOException {
-		settings = new StringBuilder();
-		if(!this.checkSettingsState()) {
-			readSettings();
+	private SettingsIO() throws IOException {
+		//If settings.ini doesn't exist, create it
+		if(!settingsINIExists()) {
+			createFile();
 		}
+		
+		//settings.ini now exists. Read it into memory and store it in settingsBuffer (works even if settings.ini is empty)
+		settingsBuffer = readSettings();
+	}
+	
+	public static SettingsIO getInstance() throws IOException {
+		if(sio == null) {
+			sio = new SettingsIO();
+		}
+		return sio;
 	}
 
 	/**
-	 * Retrieves a field from the decrypted settings.ini.
-	 * readSettings() is called if settings is empty. 
-	 * @param settings String containing the decrypted contents of settings.ini
-	 * @param field The field to retrieve from the decrypted settings.ini
+	 * Retrieves a field from the settingsBuffer. 
+	 * @param settingsBuffer String containing the decrypted contents of settings.ini
+	 * @param field The field to retrieve from the decrypted settings.ini. Can be one of the following:
+	 * SettingsIO.PST_LOCATION
+	 * SettingsIO.USERNAME
+	 * SettingsIO.PASSWORD
 	 * @return The field located in the decrypted settings.ini. Returns null if the field was not found.
 	 */
 	public String getSettingsField(String field) {
 		String result = null;
-		int searchIndex = settings.toString().indexOf(field);
+		int searchIndex = settingsBuffer.toString().indexOf(field);
 		if(searchIndex != -1) {
-			searchIndex += (field.length() + 1);     						//Points searchIndex at the beginning of the field (e.g. username is stored in settings.ini as "username=xxxxx", where"xxxxx" is the username, so searchIndex begins after "=")
-			int searchEndIndex = settings.indexOf("\n", searchIndex);		//Point unEndIndex at the "\n" at the end of the field
-			result = settings.toString().substring(searchIndex, searchEndIndex);
+			searchIndex += (field.length() + 1);     									//Points searchIndex at the beginning of the field (e.g. username is stored in settings.ini as "username=xxxxx", where"xxxxx" is the username, so searchIndex begins after "=")
+			int searchEndIndex = settingsBuffer.indexOf("\n", searchIndex);				//Point unEndIndex at the "\n" at the end of the field
+			result = settingsBuffer.toString().substring(searchIndex, searchEndIndex);
 		} 
 		return result;
 	}
@@ -63,35 +77,35 @@ public class SettingsIO {
 	 */
 	public void setSettingsField(String elementName, String elementContents) {
 		StringBuilder updatedSettings = new StringBuilder();
-		if(settings.length() > 0) {			//If settings is not empty
-			//Search for elementName in settings. If it exists, delete the element
-			int startIndex = settings.indexOf(new String(elementName + "="));
-			if(startIndex == 0) {				//If startIndex is zero, do a substring starting at the first instance of "\n" to the end of the string
-				//Element found at the beginning of settings. Set updatedSettings to the remaining elements
-				updatedSettings = new StringBuilder(settings.substring(settings.indexOf("\n") + 1));
-			} else if(startIndex > 0) {			//If startIndex is greater than zero, do a substring before and after
+		if(settingsBuffer.length() > 0) {													//If settingsBuffer is not empty
+			//Search for elementName in settingsBuffer. If it exists, delete the element
+			int startIndex = settingsBuffer.indexOf(new String(elementName + "="));
+			if(startIndex == 0) {															//If startIndex is zero, do a substring starting at the first instance of "\n" to the end of the string
+				//Element found at the beginning of settingsBuffer. Set updatedSettings to the remaining elements
+				updatedSettings = new StringBuilder(settingsBuffer.substring(settingsBuffer.indexOf("\n") + 1));
+			} else if(startIndex > 0) {														//If startIndex is greater than zero, do a substring before and after
 				//Element found. Delete it
-				settings.delete(startIndex, settings.indexOf("\n", startIndex) + 1);
+				settingsBuffer.delete(startIndex, settingsBuffer.indexOf("\n", startIndex) + 1);
 			}
 		}
 
-		//Either way, append the new element to settings. 
-		//updatedSettings will be empty unless the first element in settings is being updated
-		settings.append(updatedSettings.toString() + elementName + "=" + elementContents + "\n");
+		//Either way, append the new element to settingsBuffer. 
+		//updatedSettings will be empty unless the first element in settingsBuffer is being updated
+		settingsBuffer.append(updatedSettings.toString() + elementName + "=" + elementContents + "\n");
 
-		//Encrypt settings in preparation for writing to settings.ini
+		//Encrypt settingsBuffer in preparation for writing to settings.ini
 		BasicTextEncryptor encryptor = new BasicTextEncryptor();
 		encryptor.setPassword(ENCRYPTOR_PASS);
-		String encryptedBuffer = encryptor.encrypt(settings.toString());
+		String encryptedBuffer = encryptor.encrypt(settingsBuffer.toString());
 
-		//Write settings to settings.ini
+		//Write encryptedBuffer to settings.ini
 		boolean success = false;
 		do {
 			try(PrintWriter outFile = new PrintWriter(new File(SETTINGS_INI_LOCATION))) {
 				outFile.print(encryptedBuffer);
 				success = true;
 			} catch(FileNotFoundException e) {
-				//File not found. Create settings.ini and try writing settings again
+				//File not found. Create settings.ini and try writing again
 				File f = new File(SETTINGS_INI_LOCATION);
 				try {
 					f.createNewFile();
@@ -103,68 +117,75 @@ public class SettingsIO {
 	}
 
 	/**
-	 * Read encrypted contents of settings.ini and store them in the settings field.
+	 * Read encrypted contents of settings.ini, decrypt them, and store them in the settingsBuffer field.
 	 * This method is called by the constructor.
 	 * @return A String containing all the decrypted contents of settings.ini
 	 * @throws FileNotFoundException
 	 * @throws IOException 
 	 */
-	public void readSettings() {
-		try(BufferedReader br = new BufferedReader(new FileReader(new File(SETTINGS_INI_LOCATION)))) {
-			char[] charBuffer = new char[5000];
-			int numChar = br.read(charBuffer, 0, 5000);              				//The number of characters read from settings.ini (encrypted)
-			String encryptedSettings = new String(charBuffer, 0, numChar);  		//Creates a string from the number of chars read
-			BasicTextEncryptor encryptor = new BasicTextEncryptor();
-			encryptor.setPassword(ENCRYPTOR_PASS);
-			settings = new StringBuilder(encryptor.decrypt(encryptedSettings));		//Stores decrypted settings.ini contents in the settings field
-		} catch (FileNotFoundException e) {
-			JOptionPane.showMessageDialog(null,"settings.ini is tested to exist before calling readSettings, so this should never be reached");
-			System.exit(0);
-		} catch (IOException e) {
-			JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be missing or in use");
-			System.exit(0);
+	
+	
+	/**
+	 * Read encrypted contents of settings.ini and decrypt them. 
+	 * This method is called by the constructor.
+	 * @return A StringBuilder containing all the decrypted contents of settings.ini.
+	 * Returns null if settings.ini doesn't exist
+	 */
+	private StringBuilder readSettings() {
+		if(settingsINIExists()) {
+			try(BufferedReader br = new BufferedReader(new FileReader(new File(SETTINGS_INI_LOCATION)))) {
+				char[] charBuffer = new char[5000];
+				int numChar = br.read(charBuffer, 0, 5000);              						//Reads settings.ini into charBuffer and returns the number of characters that were read
+				if(numChar > 0) {
+					String encryptedSettings = new String(charBuffer, 0, numChar);  			//Creates a string from the number of chars read
+					BasicTextEncryptor encryptor = new BasicTextEncryptor();
+					encryptor.setPassword(ENCRYPTOR_PASS);
+					return new StringBuilder(encryptor.decrypt(encryptedSettings));				//Return the decrypted contents of the settings.ini file
+				}
+			} catch (IOException e) {
+				JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be missing or in use");
+				System.exit(0);
+			} 
+			return new StringBuilder();
+		} else {
+			return null;
 		}
 	}
 
-
 	/**
-	 * Checks the state of settings.ini and creates it if it doesn't exist.
-	 * @return true if settings.ini had to be created or is empty.
-	 * false if the settings.ini exists and is not empty.
-	 * 
-	 * @throws IOException When trying to create or read settings.ini
+	 * If settings.ini doesn't exist, it is created
+	 * @throws IOException The file may be inaccessible or in use
 	 */
-	private boolean checkSettingsState() throws IOException {
+	private void createFile() throws IOException {
 		File file = new File(SETTINGS_INI_LOCATION);
-		
-		if(!file.exists()) {			
-			//settings.ini doesn't exist; create it
+		if(!file.exists()) {
 			file.createNewFile();
-			return true;
-		} else {
-			//settings.ini does exist. Determine if it's empty
-			FileReader fr = new FileReader(new File(SETTINGS_INI_LOCATION));
-			if(fr.read() == -1) {
-				//settings.ini empty
-				fr.close();
-				return true;
-			} else {
-				//settings.ini not empty
-				fr.close();
-				return false;
-			}
 		}
 	}
 	
 	/**
-	 * Checks if there is anything in the settings field
-	 * @return true if settings is empty or null; otherwise, false.
+	 * Checks if settings.ini exists
+	 * @return
 	 */
-	public boolean isEmpty() {
-		return(settings.length() == 0 || settings == null);
+	private boolean settingsINIExists() {
+		File file = new File(SETTINGS_INI_LOCATION);
+		return file.exists();
 	}
-
-	public void createNewFile() {
-
+	
+	/**
+	 * Checks if there is anything in the settingsBuffer field
+	 * @return true if settingsBuffer is empty or null; otherwise, false.
+	 */
+	public boolean isEmptyBuffer() {
+		return(settingsBuffer.length() == 0 || settingsBuffer == null);
+	}
+	
+	public boolean deleteSettingsINI() {
+		boolean success = false;
+		File file = new File(SETTINGS_INI_LOCATION);
+		if(file.exists()) {
+			success = file.delete();
+		}
+		return success;
 	}
 }

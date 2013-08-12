@@ -3,6 +3,7 @@ package com.korshyadoo.calendar;
 import java.awt.ComponentOrientation;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
@@ -31,11 +32,9 @@ import javax.swing.JProgressBar;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.LookAndFeel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
 
 import com.google.gdata.data.calendar.CalendarEventEntry;
@@ -78,14 +77,13 @@ public class MainFrame extends JFrame {
 	protected OutlookToGoogleCalendarSync mySync;
 	private PSTInterface pstInterface;
 	
-	//Constructor
-	public MainFrame(OutlookToGoogleCalendarSync mySync) throws IOException {
-		//Pass the pstLocation in settings.ini to the constructor of a new PSTInterface and pass it to other constructor for MainFrame along with mySync
-		this(mySync, new PSTInterface(new SettingsIO().getSettingsField(SettingsIO.PST_LOCATION)));
-	}
-	public MainFrame(OutlookToGoogleCalendarSync mySync, PSTInterface pstInterface) {
+	/**
+	 * Launches the main frame for the program.
+	 * @param mySync 
+	 */
+	public MainFrame(OutlookToGoogleCalendarSync mySync) {
 		//Create the frame
-		setTitle("Outlook To Google Calendar Sync Build 0007");
+		setTitle("Outlook To Google Calendar Sync Build 0008");
 		setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 725, 362);
@@ -97,11 +95,111 @@ public class MainFrame extends JFrame {
 		contentPane.setLayout(null);
 		
 		this.mySync = mySync;
-		this.pstInterface = pstInterface;
+		this.pstInterface = PSTInterface.getInstance();
 
 		initSwingComponents();
 		
 		this.setVisible(true);
+	}
+	
+	/**
+	 * Determine if settings.ini is missing or empty. If no, read it and create a MainFrame object.
+	 * If yes, search for the Outlook.pst file and prompt user for UN and Pass.
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		//Set look and feel
+		try {
+			UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+		} catch (Throwable e) {
+			//LookAndFeel not found on user's system. Use the system's default LookAndFeel
+			try {
+				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			} catch (Exception e2) {
+				e.printStackTrace();
+			}
+		}
+
+		//If settings.ini is missing or empty (possibly because this is the first time running)
+		//locate the .pst file and run LogInFrame, otherwise run MainFrame. 
+		//If an authentication exception is thrown running MainFrame, run LogInFrame
+		SettingsIO settingsIO = null;
+		try {
+			settingsIO = SettingsIO.getInstance();
+		} catch (IOException e1) {
+			// TODO Use IOException frame to prevent exiting
+			JOptionPane.showMessageDialog(null,"There was a problem accessing settings.ini. File may be inaccessible or in use.");
+			System.exit(0);
+		}
+		if(settingsIO.isEmptyBuffer()) {														
+			////Missing or empty settings.ini
+			
+			PSTInterface pstInterfacePrime = PSTInterface.getInstance();				//The no-arg constructor executes a search for the .pst file in the default locations
+			if(pstInterfacePrime.foundPST()) {
+				//A .pst file was found
+				//Write pstLocation to settings.ini for future executions
+				settingsIO.setSettingsField(SettingsIO.PST_LOCATION, pstInterfacePrime.getPSTLocation());
+				PSTInterface.refresh();
+				
+				//Run LogInFrame
+				EventQueue.invokeLater(new LogInFrameRunnable());
+			} else {
+				//No .pst file was found in the default locations
+				//Run PSTSearchFrame
+				EventQueue.invokeLater(new PSTSearchFrameRunnable());
+			}
+			
+//			
+//			java.awt.EventQueue.invokeLater(new Runnable() {
+//				@Override
+//				public void run() {
+//
+//					if(pstInterfacePrime.foundPST()) {
+//						//A .pst file was found
+//						//Write pstLocation to settings.ini for future executions
+//						SettingsIO sio= null;
+//						try {
+//							sio = SettingsIO.getInstance();
+//						} catch (IOException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
+//						sio.setSettingsField(SettingsIO.PST_LOCATION, pstInterfacePrime.pstLocation);
+//
+//						//Run LogInFrame
+//						java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
+//					} else {
+//						//No .pst file was found in the default locations
+//						//Run PSTSearchFrame
+//						new PSTSearchFrameRunnable();
+//					}
+//				}
+//			});
+
+		} else {		
+			////settings.ini exists and is not empty
+			
+			OutlookToGoogleCalendarSync mySyncPrime = new OutlookToGoogleCalendarSync(); 
+			mySyncPrime.setUsername(settingsIO.getSettingsField(SettingsIO.USERNAME));							//Set the username for mySync
+			mySyncPrime.setPassword(settingsIO.getSettingsField(SettingsIO.PASSWORD));							//Set the password for mySync
+			PSTInterface pstInterfacePrime = PSTInterface.getInstance();										//Create PSTInterface object from pstLocation in settings.ini
+			try {
+				mySyncPrime.setUserCredentials();																//Authenticate on Google server
+				mySyncPrime.createURLObjects();																	//Form the URLs needed to use Google feeds
+			} catch(MalformedURLException e) {
+				// Bad URL
+				// This shouldn't be reachable because the user is authenticated before forming the URLs
+				JOptionPane.showMessageDialog(null,"Uh oh - you've got an invalid URL");
+				System.exit(0);
+			} catch(AuthenticationException e) {
+				if(e.getCause().toString().equals("java.net.UnknownHostException: www.google.com")) {
+					JOptionPane.showMessageDialog(null,"Unable to reach host www.google.com. Please check your internet connection and try again");
+					System.exit(0);
+				}
+				java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
+			}
+			java.awt.EventQueue.invokeLater(new MainFrameRunnable(mySyncPrime));
+		}
 	}
 
 	/**
@@ -109,7 +207,7 @@ public class MainFrame extends JFrame {
 	 */
 	private void initSwingComponents() {
 		lblUsername = new JLabel("Logged in as " + mySync.getUsername());
-		lblUsername.setBounds(57, 11, 346, 14);
+		lblUsername.setBounds(22, 11, 346, 14);
 		contentPane.add(lblUsername);
 
 		lblClock = new JLabel("");
@@ -247,71 +345,6 @@ public class MainFrame extends JFrame {
 		contentPane.add(separator);
 	}
 	
-	/**
-	 * Determine if settings.ini is missing or empty. If no, read it and create a MainFrame object.
-	 * If yes, search for the Outlook.pst file and prompt user for UN and Pass.
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		//Set look and feel
-		try {
-			UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-		} catch (Throwable e) {
-			//LookAndFeel not found on user's system
-			try {
-				LookAndFeel laf = null;
-				UIManager.setLookAndFeel(laf);
-			} catch (UnsupportedLookAndFeelException e1) {}
-		}
-
-		//If settings.ini is missing or empty (possibly because this is the first time running)
-		//locate the .pst file and run LogInFrame, otherwise run MainFrame. 
-		//If authentication exception is thrown running MainFrame, run LogInFrame
-		SettingsIO settingsIO = null;
-		try {
-			settingsIO = new SettingsIO();
-		} catch (IOException e1) {
-			// TODO Use IOException frame to prevent exiting
-			JOptionPane.showMessageDialog(null,"There was a problem accessing settings.ini. File may be inaccessible or in use.");
-			System.exit(0);
-		}
-		try {
-			if(settingsIO.isEmpty()) {												//Missing or empty settings.ini
-				PSTInterface pstInterfacePrime = new PSTInterface();				//The default constructor looks for the .pst file in the default locations
-				if(pstInterfacePrime.foundPST()) {
-					//A .pst file was found
-					//Write pstLocation to settings.ini for future executions
-					settingsIO.setSettingsField(SettingsIO.PST_LOCATION, pstInterfacePrime.getPSTLocation());
-
-					//Run LogInFrame
-					java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
-				} else {
-					//No .pst file was found in the default locations
-					//Run PSTSearchFrame
-					java.awt.EventQueue.invokeLater(new PSTSearchFrameRunnable());
-				}
-			} else {		//settings.ini exists and is not empty
-				OutlookToGoogleCalendarSync mySyncPrime = new OutlookToGoogleCalendarSync(); 
-				mySyncPrime.setUsername(settingsIO.getSettingsField(SettingsIO.USERNAME));								//Set the username for mySync
-				mySyncPrime.setPassword(settingsIO.getSettingsField(SettingsIO.PASSWORD));								//Set the password for mySync
-				PSTInterface pstInterfacePrime = new PSTInterface(settingsIO.getSettingsField(SettingsIO.PST_LOCATION));	//Create PSTInterface object from pstLocation in settings.ini
-				mySyncPrime.setUserCredentials();																//Authenticate on Google server
-				mySyncPrime.createURLObjects();																	//Form the URLs needed to use Google feeds
-				java.awt.EventQueue.invokeLater(new MainFrameRunnable(mySyncPrime, pstInterfacePrime));
-			}
-		} catch(MalformedURLException e) {
-			// Bad URL
-			// This shouldn't be reachable because the user is authenticated before forming the URLs
-			JOptionPane.showMessageDialog(null,"Uh oh - you've got an invalid URL");
-			System.exit(0);
-		} catch(AuthenticationException e) {
-			if(e.getCause().toString().equals("java.net.UnknownHostException: www.google.com")) {
-				JOptionPane.showMessageDialog(null,"Unable to reach host www.google.com. Please check your internet connection and try again");
-				System.exit(0);
-			}
-			java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
-		}
-	}
 	
 	/**
 	 * A SwingWorker that allows UI updates to occur while using the delete date range feature.
@@ -425,6 +458,7 @@ public class MainFrame extends JFrame {
 		 */
 		@Override
 		public Boolean doInBackground() {
+			System.out.println("Starting sync. pstlocation: " + MainFrame.this.pstInterface.getPSTLocation());
 			//Retrieve all gmail events within the timerange
 			List<CalendarEventEntry> events = null;
 			try {
@@ -849,6 +883,13 @@ public class MainFrame extends JFrame {
 		java.awt.EventQueue.invokeLater(new Runnable() {
 			@Override
 			public void run() {
+				//Hide labels when changing users
+				MainFrame.this.lblCheck.setVisible(false);
+				MainFrame.this.lblSuccess.setVisible(false);
+				MainFrame.this.lblActionTime.setText("");
+				MainFrame.this.lblNumEvents.setText("");
+				
+				
 				new LogInFrame(MainFrame.this).setLocationRelativeTo(null);
 			}
 		});
@@ -1076,14 +1117,6 @@ public class MainFrame extends JFrame {
 		lblUsername.setText(s);
 	}
 	
-	/**
-	 * Returns a PSTInterface object that uses the same pstLocation as the MainFrame object
-	 * @return
-	 */
-	public PSTInterface getPSTInterface() {
-		return new PSTInterface(pstInterface.getPSTLocation());
-	}
-	
 	static class PSTSearchFrameRunnable implements Runnable {
 		@Override
 		public void run() {
@@ -1093,16 +1126,14 @@ public class MainFrame extends JFrame {
 	
 	static class MainFrameRunnable implements Runnable {
 		private OutlookToGoogleCalendarSync o;
-		private PSTInterface p;
 		
-		public MainFrameRunnable(OutlookToGoogleCalendarSync o, PSTInterface p) {
+		public MainFrameRunnable(OutlookToGoogleCalendarSync o) {
 			this.o = o;
-			this.p = p;
 		}
 		
 		@Override
 		public void run() {
-			new MainFrame(o, p).setLocationRelativeTo(null);
+			new MainFrame(o).setLocationRelativeTo(null);
 		}
 	}
 	

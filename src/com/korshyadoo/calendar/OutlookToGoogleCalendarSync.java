@@ -39,9 +39,8 @@ import com.google.gdata.util.ServiceException;
 /**
  * Contains methods for interfacing with Google API, including authenitcation,
  * running queries, and running batch requests. 
- * Handles conversion of a PST object to a CEE object as well as 
- * comparison between PST and CEE objects.
- *
+ * 
+ * @author korshyadoo
  */
 public class OutlookToGoogleCalendarSync {
 	// The base URL for a user's calendar metafeed (needs a username appended).
@@ -166,7 +165,7 @@ public class OutlookToGoogleCalendarSync {
 	}
 	
 	/**
-	 * Retrieves a List<CalendarEventEntry> containing all appointments with a start time between startDate and endDate
+	 * Retrieves a List<CalendarEventEntry> containing all appointments in the Google calendar with a start time between startDate and endDate
 	 * @param startDate The beginning Date for the query
 	 * @param endDate The ending Date for the query
 	 * @return A List<CalendarEventEntry> containing all appointments with a start time between startDate and endDate

@@ -22,36 +22,104 @@ import com.pff.PSTFile;
 import com.pff.PSTFolder;
 
 /**
+ * Utility class for interfacing with the .pst file. 
+ * Handles conversion of pst objects to cee (calendar event entry) objects and 
+ * comparisons between the two types of objects. When an object is constructed, 
+ * if the location of .pst file is not passed to the constructor, an attempt is made 
+ * to locate the .pst file in the default locations based on the operating system version. 
+ * If the .pst file is not found, the pstLocation field is set to null, indicating that 
+ * a more thorough search must be made in order to locate the file.
  * 
  * @author korshyadoo
  *
  */
 public class PSTInterface {
-	public static final String PST_LOCATION_DEFAULT_XP = "C:\\Documents and Settings\\" + 		//The default location for the .pst file in Windows XP
+	private SettingsIO sio;
+	private static PSTInterface pstInterface;
+	
+	/**
+	 * The default location for the .pst file in Windows XP
+	 */
+	public static final String PST_LOCATION_DEFAULT_XP = "C:\\Documents and Settings\\" + 
 			System.getProperty("user.name") +
 			"\\Local Settings\\Application Data\\Microsoft\\Outlook\\Outlook.pst";
-	public static final String PST_LOCATION_DEFAULT_VISTA = "C:\\Users\\" +						//The default location for the .pst file in Windows Vista / 7
+	
+	/**
+	 * The default location for the .pst file in Windows Vista / 7
+	 */
+	public static final String PST_LOCATION_DEFAULT_VISTA = "C:\\Users\\" +	
 			System.getProperty("user.name") +
 			"\\AppData\\Local\\Microsoft\\Outlook\\Outlook.pst";
-	public static final String PST_LOCATION_DEFAULT_VISTA2 = "C:\\Users\\" +					//An alternate location for the .pst file in Windows Vista / 7
+	
+	/**
+	 * An alternate location for the .pst file in Windows Vista / 7
+	 */
+	public static final String PST_LOCATION_DEFAULT_VISTA2 = "C:\\Users\\" +
 			System.getProperty("user.name") +
 			"\\Documents\\Outlook Files\\Outlook.pst";
-	private String pstLocation;																	//Location of the .pst file used by Outlook
+	
+	/**
+	 * Location of the .pst file used by Outlook
+	 */
+	private String pstLocation;
 
-	//Constructors
-	public PSTInterface() {
-		pstLocation = locatePST();
+	/**
+	 * Searches for the .pst file (the file Outlook stores the calendar in) in the default locations
+	 * pstLocation is null if the file was not found
+	 */
+	private PSTInterface() {
+		try {
+			sio = SettingsIO.getInstance();
+		} catch (IOException e) {
+			// TODO Handle exception with IOExceptionFrame
+			e.printStackTrace();
+		}
+		String loc = sio.getSettingsField(SettingsIO.PST_LOCATION);
+		
+		//If settings.ini has the pst location stored in it, retrieve it. Otherwise, perform a search for the file in the default locations
+		if(loc == null) {
+			pstLocation = defaultPSTSearch();
+		} else {
+			pstLocation = loc; 
+		}
 	}
-	public PSTInterface(String pstLocation) {
-		this.pstLocation = pstLocation;
+	
+//	/**
+//	 * Creates a new PSTInterface with the passed location of the .pst file
+//	 * @param pstLocation The location of the .pst file (the file Outlook stores the calendar in)
+//	 */
+//	private PSTInterface(String pstLocation) {
+//		try {
+//			sio = SettingsIO.getInstance();
+//		} catch (IOException e) {
+//			// TODO Handle exception with IOExceptionFrame
+//			e.printStackTrace();
+//		}
+//		this.pstLocation = pstLocation;
+//	}
+	
+	public static PSTInterface getInstance() {
+		if(pstInterface == null) {
+			pstInterface = new PSTInterface();
+		}
+		return pstInterface;
 	}
+	
+//	public static PSTInterface getInstance (String location) {
+//		if(pstInterface == null) {
+//			pstInterface = new PSTInterface(location);
+//		} else {
+//			pstInterface.pstLocation 
+//		}
+//		return pstInterface;
+//	}
 
 	/**
 	 * Attempts to locate the .pst in the default locations
 	 * @author korshyadoo
 	 * @return String containing the location of the .pst file. Returns null if no file was found.
 	 */
-	public String locatePST() {
+	private String defaultPSTSearch() {
 		String location = null;
 		if(System.getProperty("os.version").equals("5.1")) {
 			//Windows XP
@@ -80,20 +148,23 @@ public class PSTInterface {
 		}
 		return location;
 	}
-
+	
 	/**
-	 * Check if a CalendarEventEntry is meaningfully equivalent to a PSTAppointment.
-	 * PSTAppointment.getBody() adds a line feed, '\r' (ASCII 13), and a 
-	 * carriage return, '\n' (ASCII 10), to the end of the content, even when 
-	 * the content is empty. Also, any carriage return in the content is 
-	 * preceded by a line feed.
-	 * Remove all ASCII 13 from pst
+	 * Checks if a CalendarEventEntry is meaningfully equivalent to a PSTAppointment.
+	 * 
 	 * @author korshyadoo
 	 * @param cee CalendarEventEntry to be compared.
 	 * @param pst PSTAppointment to be compared.
 	 * @return true if they are meaningfully equivalent, otherwise false.
 	 */
 	public boolean compareCEEToPST(CalendarEventEntry cee, PSTAppointment pst) {
+//		
+//		PSTAppointment.getBody() adds a line feed, '\r' (ASCII 13), and a 
+//		 * carriage return, '\n' (ASCII 10), to the end of the content, even when 
+//		 * the content is empty. Also, any carriage return in the content is 
+//		 * preceded by a line feed.
+//		 * Remove all ASCII 13 from pst
+		
 		//DEBUG
 		//        System.out.println("Compare:");
 		//        System.out.println("Title: " + pst.getSubject() + " vs " + cee.getTitle().getPlainText());
@@ -101,7 +172,9 @@ public class PSTInterface {
 		//        System.out.println("End: " + pst.getEndTime().toString() + " vs " + cee.getTimes().get(0).getEndTime().getValue());
 		//        System.out.println("Location: " + pst.getLocation() + " vs " + cee.getLocations().get(0).getValueString());
 		//        System.out.println("Content: " + pst.getBody().trim() + " vs " + cee.getPlainTextContent());
-		//        
+		//  
+		
+		
 		//Create a String containing the content from pst with the excess line feeds and carriage return removed
 		char[] pstContentArray = pst.getBody().trim().toCharArray();
 		char[] correctedPSTContentArray = new char[pstContentArray.length];
@@ -119,7 +192,8 @@ public class PSTInterface {
         for(int n = 0; n < debugarray2.length; n++) {
             System.out.println("Array char " + n + " = " + (int)debugarray2[n] + " " + debugarray2[n]);
         }        
-		 */        
+		 */  
+		
 		if(pstContentString.equals(cee.getPlainTextContent())) {                //If the content on the cee and pst match, compare the rest
 			CalendarEventEntry convertedPST = convertPSTToCEE(pst);
 			//            System.out.println("Matched: PST " + pst.getSubject() + " / " + pst.getStartTime().toString());
@@ -150,15 +224,35 @@ public class PSTInterface {
 		//If the user has read permission for the .pst file, then create the PSTFile object
 		//If not, display warning and exit
 		PSTFile pstFile = null;
-		if(new File(pstLocation).canRead()) {
-			pstFile = new PSTFile(pstLocation);
+		File file = new File(pstLocation);
+		if(file.exists()) {
+			if(file.canRead()) {
+				pstFile = new PSTFile(pstLocation);
+			} else {
+				JOptionPane.showMessageDialog(null,"The user does not have permission to read the Outlook calendar");
+				System.exit(0);
+			}
 		} else {
-			JOptionPane.showMessageDialog(null,"The user does not have permission to read the Outlook calendar");
+			//Outlook.pst is not in the location specified by settings.ini. Delete it and exit so that it can be searched for when the application runs again
+			JOptionPane.showMessageDialog(null,"Outlook.pst has gone missing. Please re-launch the program.");
+			SettingsIO settingsIO = SettingsIO.getInstance();
+			settingsIO.deleteSettingsINI();
 			System.exit(0);
-		}
+		} 
 
 		List<PSTFolder> rootSubs = pstFile.getRootFolder().getSubFolders();			//getSubFolers returns a java.util.Vector<PSTFolder>
-		return rootSubs.get(0).getSubFolders();      
+		
+		//In Outlook 2003, the sub folder containing the Outlook folders is called "Top of Personal Folders"
+		//In Outlook 2010, the sub folder containing the Outlook folders is called "Top of Outlook data file"
+		//Locate the Outlook folders
+		int outlookFoldersNumber = 0;
+		for(int x = 0; x < rootSubs.size(); x++) {
+			if(rootSubs.get(x).getDisplayName().startsWith("Top of ")) {
+				outlookFoldersNumber = x;
+				break;
+			}
+		}
+		return rootSubs.get(outlookFoldersNumber).getSubFolders();      
 	}
 
 	/**
@@ -258,4 +352,18 @@ public class PSTInterface {
 	public String getPSTLocation() {
 		return pstLocation;
 	}
+	
+	/**
+	 * Refreshes the pstLocation field from memory buffer in the SettingsIO object 
+	 */
+	public static void refresh() {
+		//Ensure a PSTInterface object exists first
+		if(pstInterface == null) {
+			PSTInterface.getInstance();
+		}
+		
+		//Retrieve the current pstLocation from the SettingsIO memory buffer
+		pstInterface.pstLocation = pstInterface.sio.getSettingsField(SettingsIO.PST_LOCATION);
+	}
+
 }
