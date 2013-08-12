@@ -83,7 +83,7 @@ public class MainFrame extends JFrame {
 	 */
 	public MainFrame(OutlookToGoogleCalendarSync mySync) {
 		//Create the frame
-		setTitle("Outlook To Google Calendar Sync Build 0008");
+		setTitle("Outlook To Google Calendar Sync Build 0009");
 		setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 725, 362);

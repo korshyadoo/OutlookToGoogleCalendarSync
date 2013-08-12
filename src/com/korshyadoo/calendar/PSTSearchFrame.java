@@ -3,6 +3,7 @@ package com.korshyadoo.calendar;
 import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,7 +41,23 @@ public class PSTSearchFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public PSTSearchFrame() {
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		//Add a listener to delete settings.ini if the window is closed before the search is completed or before the user chooses a file.
+		//This prevents an exception from throwing on subsequent launches
+		addWindowListener(new java.awt.event.WindowAdapter(){
+			public void windowClosing(WindowEvent we) {
+				//Attempt to delete settings.ini before exiting to avoid an exception on next program launch
+				SettingsIO sio;
+				try {
+					sio = SettingsIO.getInstance();
+					sio.deleteSettingsINI();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				System.exit(0);
+			}
+		});
+
+
 		setBounds(100, 100, 411, 301);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -128,10 +145,21 @@ public class PSTSearchFrame extends JFrame {
 		public PSTSearchRunnable(PSTSearchFrame pstSearchFrame) {
 			this.pstSearchFrame = pstSearchFrame;
 		}
-
-		@Override
-		public void run() {
-			//Search for *.pst on c:\
+		
+		private List<Path> userSearch() {
+			Path startingDir = Paths.get("c:\\users\\");
+			String pattern = "*.pst";
+			Finder finder = new Finder(pattern, PSTSearchFrame.this);
+			try {
+				Files.walkFileTree(startingDir, finder);
+			} catch (IOException e1) {
+				JOptionPane.showMessageDialog(null,"IOException when searching for .pst file");
+				System.exit(0);
+			}
+			return finder.getResults();
+		}
+		
+		private List<Path> rootSearch() {
 			Path startingDir = Paths.get("c:\\");
 			String pattern = "*.pst";
 			Finder finder = new Finder(pattern, PSTSearchFrame.this);
@@ -141,12 +169,39 @@ public class PSTSearchFrame extends JFrame {
 				JOptionPane.showMessageDialog(null,"IOException when searching for .pst file");
 				System.exit(0);
 			}
-			List<Path> results = finder.getResults();
+			return finder.getResults();
+		}
 
+		@Override
+		public void run() {
+			//Search for *.pst in "c:\ users"
+			List<Path> results = userSearch();
+			
+			if(!checkSearchResults(results)) {
+				//No results found. Try full search of C:\
+				results = rootSearch();
+				if(!checkSearchResults(results)) {
+					//No results found. Delete settings.ini and display error message
+					try {
+						SettingsIO.getInstance().deleteSettingsINI();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					lblNoPST.setVisible(true);
+					lblSearchingForPST.setVisible(false);
+					lblSearchingDir.setVisible(false);
+					setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+				}
+			}
+
+				
+		}
+		
+		private boolean checkSearchResults(List<Path> results) {
 			//Check the results
 			if(results.size() == 1) {
 				//Only one pst file found
-
+				
 				//Write pstLocation to settings.ini
 				try {
 					SettingsIO.getInstance().setSettingsField(SettingsIO.PST_LOCATION, results.get(0).toString());
@@ -156,13 +211,14 @@ public class PSTSearchFrame extends JFrame {
 					JOptionPane.showMessageDialog(null,"There was a problem reading settings.ini. File may be in use.");
 					System.exit(0);
 				}
-
+				
 				//DEBUG
 				System.out.println(results.get(0).toString());
-
+				
 				//Run LogInFrame and dispose of this frame
 				java.awt.EventQueue.invokeLater(new LogInFrameRunnable());
 				pstSearchFrame.dispose();
+				return true;
 			} else if(results.size() > 1) {
 				//More than one .pst found. Have the user choose one
 				
@@ -174,27 +230,20 @@ public class PSTSearchFrame extends JFrame {
 				lblSearchingForPST.setVisible(false);
 				lblSearchingDir.setVisible(false);
 				setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-
+				
 				//Add the results to listPST
 				DefaultListModel<String> listModel = new DefaultListModel<>();
 				for(int x = 0; x < results.size(); x++) {
 					listModel.addElement(results.get(x).toString());
 				}
 				listPST.setModel(listModel);
+				return true;
 			} else {
-				//No results found. Delete settings.ini and display error message
-				try {
-					SettingsIO.getInstance().deleteSettingsINI();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				lblNoPST.setVisible(true);
-				lblSearchingForPST.setVisible(false);
-				lblSearchingDir.setVisible(false);
-				setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-			}		
+				return false;
+			}	
 		}
 	}
+	
 	
 	public void setLBLSearchingFileText(String text) {
 		lblSearchingDir.setText(text);
