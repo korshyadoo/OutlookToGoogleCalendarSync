@@ -1,0 +1,3 @@
+Build 0011:
+	- When clicking the Open VCards or Open Logs button, a message will be displayed if the folder doesn't exist
+	- After syncing, if a VCard is created, the VCard folder is automatically opened

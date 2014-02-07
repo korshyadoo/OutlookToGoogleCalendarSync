@@ -2,8 +2,8 @@
 Outlook to Google Calendar Sync
 ===============================
 
-To run: unzip the archive OutlookToGoogleCalendarSync0010.zip to
-a folder on your hard drive and run OutlookToGoogleCalendarSync0010.jar.
+To run: unzip the archive OutlookToGoogleCalendarSync0011.zip to
+a folder on your hard drive and run OutlookToGoogleCalendarSync0011.jar.
 
 This is an application I wrote to demonstrate my abilities as a 
 Java developer. It synchronizes appointments from a Microsoft 
